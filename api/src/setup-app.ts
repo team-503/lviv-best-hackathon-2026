@@ -14,7 +14,7 @@ import { sessionIdCookieMiddleware } from './common/middlewares/session-id-cooki
 export function setupApp(app: NestExpressApplication): NestExpressApplication {
   app.use(helmet());
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'https://advertize.com.ua',
+    origin: process.env.CORS_ORIGIN,
     methods: config.get('cors.methods'),
     credentials: true,
   });
@@ -54,7 +54,7 @@ export function setupApp(app: NestExpressApplication): NestExpressApplication {
   });
 
   if (process.env.NODE_ENV === 'development') {
-    const swaggerConfig = new DocumentBuilder().setTitle('Advertize API').setVersion('1.0').build();
+    const swaggerConfig = new DocumentBuilder().setTitle('API').setVersion('1.0').build();
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api', app, document);
   }
