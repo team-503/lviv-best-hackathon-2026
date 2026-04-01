@@ -4,7 +4,6 @@
   "description": "",
   "author": "",
   "private": true,
-  "license": "UNLICENSED",
   "main": "dist/main-firebase.js",
   "engines": {
     "node": "24"

@@ -1,0 +1,45 @@
+name: Deploy to Firebase Functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+      - 'firebase.json'
+      - '.github/workflows/firebase-functions-merge.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: api
+
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: api
+
+      - name: Build
+        run: npm run build
+        working-directory: api
+
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@v15.7.0
+        with:
+          args: deploy --only functions:api-v2 --force
+        env:
+          PROJECT_ID: advertize-lviv
+          NODE_ENV: production
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ADVERTIZE_LVIV }}
