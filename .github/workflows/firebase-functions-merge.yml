@@ -42,4 +42,4 @@ jobs:
         env:
           PROJECT_ID: advertize-lviv
           NODE_ENV: production
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ADVERTIZE_LVIV }}
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TEAM_503_2026 }}
