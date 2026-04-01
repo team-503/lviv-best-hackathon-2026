@@ -1,4 +1,4 @@
-name: Deploy to Firebase Functions
+name: Deploy to Firebase Functions on merge
 
 on:
   push:
