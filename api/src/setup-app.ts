@@ -4,9 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import config from 'config';
 import cookieParser from 'cookie-parser';
 import { doubleCsrf } from 'csrf-csrf';
-import type { Response } from 'express';
 import helmet from 'helmet';
-import { join } from 'path';
 import { DatabaseExceptionFilter } from './common/exception-filters/database-exception.filter';
 import { getSessionIdentifier } from './common/helpers/session-identifier';
 import { sessionIdCookieMiddleware } from './common/middlewares/session-id-cookie.middleware';
@@ -45,19 +43,9 @@ export function setupApp(app: NestExpressApplication): NestExpressApplication {
   );
   app.useGlobalFilters(new DatabaseExceptionFilter());
 
-  // TODO: use firebase/supabase storage
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
-    setHeaders: (res: Response) => {
-      res.setHeader('Content-Disposition', 'attachment');
-    },
-  });
-
-  if (process.env.NODE_ENV === 'development') {
-    const swaggerConfig = new DocumentBuilder().setTitle('API').setVersion('1.0').build();
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api', app, document);
-  }
+  const swaggerConfig = new DocumentBuilder().setTitle('API').setVersion('1.0').build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api', app, document);
 
   return app;
 }

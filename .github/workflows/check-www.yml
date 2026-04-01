@@ -1,10 +1,10 @@
 name: "`/www` checks"
 
 on:
-  push:
-    paths:
-      - "www/**"
-      - ".github/workflows/check-www.yml"
+  # push:
+  #   paths:
+  #     - "www/**"
+  #     - ".github/workflows/check-www.yml"
   pull_request:
     paths:
       - "www/**"
