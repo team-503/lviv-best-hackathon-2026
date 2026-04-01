@@ -1,0 +1,7 @@
+'*.{js,jsx,ts,tsx}':
+  - prettier --write
+  - eslint --fix
+  - bash -c 'npm run typecheck'
+
+'*.{json,yml,yaml,md,css,html}':
+  - prettier --write
