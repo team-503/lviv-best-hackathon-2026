@@ -14,7 +14,7 @@ export const createNestServer = async (expressInstance: express.Express): Promis
 const server = express();
 let isInitialized = false;
 
-export const apiV2 = functions.https.onRequest(
+export const api = functions.https.onRequest(
   {
     cors: true,
     maxInstances: 10,
