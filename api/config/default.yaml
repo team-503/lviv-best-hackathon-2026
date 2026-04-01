@@ -1,0 +1,19 @@
+app:
+  name: 503 Team's App
+  port: 4000
+
+cors:
+  methods:
+    - '*'
+
+throttle:
+  base:
+    short:
+      ttl: 1000
+      limit: 3
+    medium:
+      ttl: 10000
+      limit: 20
+    long:
+      ttl: 60000
+      limit: 100
