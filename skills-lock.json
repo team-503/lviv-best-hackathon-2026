@@ -1,6 +1,31 @@
 {
   "version": 1,
   "skills": {
+    "firebase-app-hosting-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "7f0e0330510b4e6b06bcede472cebb183a491b8a0098f92d7563454c40d78050"
+    },
+    "firebase-auth-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "df411eb125374de6086edd38dd739769088b60945052060aec1f57f934be3e27"
+    },
+    "firebase-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "1a63ad98e772cbe4cded7eb8d83d0f8722f13f7b1a47087a8aa59a4080fc82bb"
+    },
+    "firebase-firestore-standard": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "44c36234de9769969340f05b235e71c54471ae1ad1152ce2ffea66c80d0db8ca"
+    },
+    "firebase-hosting-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "fb86fd4035e8e6379931faeb443557ac6f2e43fde04b397433f287e69b6532a9"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",
