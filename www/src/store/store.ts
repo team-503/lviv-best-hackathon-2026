@@ -4,6 +4,7 @@ import requestsReducer from './slices/requestsSlice';
 import planReducer from './slices/planSlice';
 import uiReducer from './slices/uiSlice';
 import simulationReducer from './slices/simulationSlice';
+import authReducer from './slices/authSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     plan: planReducer,
     ui: uiReducer,
     simulation: simulationReducer,
+    auth: authReducer,
   },
 });
 

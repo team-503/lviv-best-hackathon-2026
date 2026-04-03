@@ -1,9 +1,8 @@
-import { Moon, Sun, Truck, Menu, User, Play, SkipForward, CheckCheck, CalendarDays } from 'lucide-react';
+import { Moon, Sun, Truck, Menu, User, Play, SkipForward, CheckCheck, CalendarDays, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { CURRENT_USER } from '@/data/mockData';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleTheme, setMobileSidebarOpen } from '@/store/slices/uiSlice';
+import { logout } from '@/store/slices/authSlice';
 import { useSimulation } from '@/hooks/useSimulation';
 import type { SimStatus } from '@/store/slices/simulationSlice';
 import { cn } from '@/lib/utils';
@@ -28,6 +27,7 @@ interface HeaderProps {
 export function Header({ showSimulation = false }: HeaderProps) {
   const dispatch = useAppDispatch();
   const theme = useAppSelector((s) => s.ui.theme);
+  const user = useAppSelector((s) => s.auth.user);
   const { status, day, runSimulation } = useSimulation();
   const simBtn = SIM_BUTTON[status];
   const SimIcon = simBtn.icon;
@@ -79,20 +79,29 @@ export function Header({ showSimulation = false }: HeaderProps) {
           {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
 
-        <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-1.5">
-          <div className="flex size-6 items-center justify-center rounded-full bg-primary/10">
-            <User className="size-3.5 text-primary" />
+        {user && (
+          <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-1.5">
+            <div className="flex size-6 items-center justify-center rounded-full bg-primary/10">
+              <User className="size-3.5 text-primary" />
+            </div>
+            <div className="hidden sm:block">
+              <p className="text-xs font-medium leading-none">{user.name}</p>
+              <p className="text-xs text-muted-foreground leading-none mt-0.5">
+                {ROLE_LABELS[user.role]}
+              </p>
+            </div>
           </div>
-          <div className="hidden sm:block">
-            <p className="text-xs font-medium leading-none">{CURRENT_USER.name}</p>
-            <p className="text-xs text-muted-foreground leading-none mt-0.5">
-              {ROLE_LABELS[CURRENT_USER.role]}
-            </p>
-          </div>
-          <Badge variant="secondary" className="hidden md:inline-flex text-xs">
-            {ROLE_LABELS[CURRENT_USER.role]}
-          </Badge>
-        </div>
+        )}
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => dispatch(logout())}
+          aria-label="Вийти"
+          title="Вийти"
+        >
+          <LogOut className="size-4" />
+        </Button>
       </div>
     </header>
   );
