@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { LocationDto } from '../../../common/dto/request/location.dto';
+import { PermissionLevel } from '../../../common/enums/permission-level.enum';
 
 export class WarehouseListItemResponseDto {
   @ApiProperty({ example: 1 })
@@ -12,10 +13,11 @@ export class WarehouseListItemResponseDto {
   location: LocationDto;
 
   @ApiProperty({
-    type: [String],
+    enum: PermissionLevel,
+    isArray: true,
     nullable: true,
-    example: ['read', 'write'],
     description: 'User permissions for this warehouse, or null if no access',
+    example: [PermissionLevel.Read, PermissionLevel.Write],
   })
-  permissions: string[] | null;
+  permissions: PermissionLevel[] | null;
 }
