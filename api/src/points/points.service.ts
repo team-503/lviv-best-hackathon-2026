@@ -31,6 +31,7 @@ export class PointsService {
         ON up.resource_type = 'point'
         AND up.resource_id = p.id
         AND up.user_id = ${userId}::uuid
+      WHERE p.archived = false
       ORDER BY p.id
     `;
 
@@ -94,7 +95,7 @@ export class PointsService {
 
   async remove(id: number): Promise<void> {
     const count = await this.prisma.$executeRaw`
-      DELETE FROM points WHERE id = ${id}
+      UPDATE points SET archived = true WHERE id = ${id} AND archived = false
     `;
 
     if (count === 0) {

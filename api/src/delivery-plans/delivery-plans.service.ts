@@ -129,6 +129,7 @@ export class DeliveryPlansService {
       JOIN products p ON p.id = dr.product_id
       WHERE dr.status = ${RequestStatus.Active}
         AND dr.criticality::text IN (${Prisma.join(criticalities)})
+        AND pt.archived = false
     `;
   }
 
@@ -194,6 +195,7 @@ export class DeliveryPlansService {
         ST_Y(location::geometry) AS lat,
         ST_X(location::geometry) AS lng
       FROM warehouses
+      WHERE archived = false
       ORDER BY id
     `;
   }

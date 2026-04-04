@@ -29,6 +29,7 @@ export class WarehousesService {
         ON up.resource_type = 'warehouse'
         AND up.resource_id = w.id
         AND up.user_id = ${userId}::uuid
+      WHERE w.archived = false
       ORDER BY w.id
     `;
 
@@ -91,7 +92,7 @@ export class WarehousesService {
 
   async remove(id: number): Promise<void> {
     const count = await this.prisma.$executeRaw`
-      DELETE FROM warehouses WHERE id = ${id}
+      UPDATE warehouses SET archived = true WHERE id = ${id} AND archived = false
     `;
 
     if (count === 0) {
