@@ -29,13 +29,13 @@ export class PermissionsGuard implements CanActivate {
 
     if (user.role === 'admin') return true;
 
-    const resourceId = Number(request.params.id);
+    const resourceId = request.params.id;
 
     if (!user.permissions) {
       user.permissions = await this.authService.getUserPermissions(user.id);
     }
 
-    const entry = user.permissions.find((p) => p.resource_type === required.resourceType && p.resource_id === resourceId);
+    const entry = user.permissions.find((p) => p.resource_type === required.resourceType && String(p.resource_id) === resourceId);
 
     if (!entry || !entry.permissions.includes(required.permission)) {
       throw new ForbiddenException('Insufficient permissions for this resource');
