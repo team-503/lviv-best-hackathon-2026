@@ -1,12 +1,6 @@
-export interface NearestPointRow {
-  id: number;
-  name: string;
-  lat: number;
-  lng: number;
-  distance_meters: number;
-  product_id: number;
-  product_name: string;
-  quantity: number;
+import type { NearestBaseRow } from './nearest-base-row.type';
+
+export interface NearestPointRow extends NearestBaseRow {
   min_threshold: number;
   surplus: number;
 }

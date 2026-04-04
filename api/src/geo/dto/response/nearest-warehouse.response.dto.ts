@@ -2,14 +2,14 @@ import { ApiProperty } from '@nestjs/swagger';
 import { LocationDto } from '../../../common/dto/request/location.dto';
 import { ProductResponseDto } from '../../../products/dto/response/product.response.dto';
 
-export class NearestWarehouseResponseDto {
-  @ApiProperty({ description: 'Warehouse ID', example: 1 })
+export class NearestBaseResponseDto {
+  @ApiProperty({ description: 'ID', example: 1 })
   id: number;
 
-  @ApiProperty({ description: 'Warehouse name', example: 'Warehouse A' })
+  @ApiProperty({ description: 'Name', example: 'Warehouse A' })
   name: string;
 
-  @ApiProperty({ type: LocationDto, description: 'Warehouse coordinates' })
+  @ApiProperty({ type: LocationDto, description: 'Coordinates' })
   location: LocationDto;
 
   @ApiProperty({ description: 'Distance from origin in meters', example: 1250.5 })
@@ -21,3 +21,5 @@ export class NearestWarehouseResponseDto {
   @ApiProperty({ description: 'Available quantity', example: 50 })
   quantity: number;
 }
+
+export class NearestWarehouseResponseDto extends NearestBaseResponseDto {}
