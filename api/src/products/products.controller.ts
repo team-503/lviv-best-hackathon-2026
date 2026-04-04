@@ -1,13 +1,12 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiNoContentResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Auth } from '../auth/decorators';
+import { ApiNoContentResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Auth } from '../auth/decorators/auth.decorator';
 import { AuthLevel } from '../common/enums/auth-level.enum';
 import { CreateProductDto } from './dto/request/create-product.dto';
 import { ProductResponseDto } from './dto/response/product.response.dto';
 import { ProductsService } from './products.service';
 
 @ApiTags('products')
-@ApiBearerAuth()
 @Controller('products')
 @Auth()
 export class ProductsController {

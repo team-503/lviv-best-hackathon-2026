@@ -1,14 +1,14 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { RequestUser } from '../auth/auth.types';
-import { Auth, CurrentUser } from '../auth/decorators';
+import { Auth } from '../auth/decorators/auth.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthLevel } from '../common/enums/auth-level.enum';
 import { ProfileResponseDto } from './dto/response/profile.response.dto';
 import { UserResponseDto } from './dto/response/user.response.dto';
 import { ProfilesService } from './profiles.service';
 
 @ApiTags('profiles')
-@ApiBearerAuth()
 @Controller('profiles')
 @Auth()
 export class ProfilesController {

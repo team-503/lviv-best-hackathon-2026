@@ -8,7 +8,7 @@ export class AuthService {
 
   verifyToken(token: string): jwt.JwtPayload {
     try {
-      const payload = jwt.verify(token, process.env.SUPABASE_JWT_SECRET as string, {
+      const payload = jwt.verify(token, process.env.SUPABASE_JWT_SECRET, {
         algorithms: ['HS256'],
       });
       if (typeof payload === 'string') {
@@ -21,6 +21,7 @@ export class AuthService {
     }
   }
 
+  // TODO: fix inline type
   async getProfile(userId: string): Promise<{ role: string; email: string | null }> {
     const profile = await this.prisma.profiles.findUnique({
       where: { id: userId },

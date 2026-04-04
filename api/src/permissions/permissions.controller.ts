@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
-import { ApiBearerAuth, ApiNoContentResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Auth } from '../auth/decorators';
+import { ApiNoContentResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Auth } from '../auth/decorators/auth.decorator';
 import { AuthLevel } from '../common/enums/auth-level.enum';
 import { CreatePermissionDto } from './dto/request/create-permission.dto';
 import { UpdatePermissionDto } from './dto/request/update-permission.dto';
@@ -8,7 +8,6 @@ import { PermissionResponseDto } from './dto/response/permission.response.dto';
 import { PermissionsService } from './permissions.service';
 
 @ApiTags('permissions')
-@ApiBearerAuth()
 @Controller('permissions')
 @Auth(AuthLevel.Admin)
 export class PermissionsController {
