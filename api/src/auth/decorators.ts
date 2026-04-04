@@ -8,19 +8,24 @@ export enum AuthLevel {
   Admin = 'admin',
 }
 
+export enum AuthResource {
+  Warehouse = 'warehouse',
+  Point = 'point',
+}
+
 export interface AuthMetadata {
   level: AuthLevel;
-  resourceType?: string;
+  resource?: AuthResource;
 }
 
 export const AUTH_LEVEL_KEY = 'auth:level';
 
 export function Auth(level?: AuthLevel.Admin): MethodDecorator & ClassDecorator;
-export function Auth(level: AuthLevel.Read | AuthLevel.Write, resourceType: string): MethodDecorator & ClassDecorator;
-export function Auth(level?: AuthLevel, resourceType?: string): MethodDecorator & ClassDecorator {
+export function Auth(level: AuthLevel.Read | AuthLevel.Write, resourceType: AuthResource): MethodDecorator & ClassDecorator;
+export function Auth(level?: AuthLevel, resource?: AuthResource): MethodDecorator & ClassDecorator {
   return SetMetadata(AUTH_LEVEL_KEY, {
     level: level ?? AuthLevel.Authenticated,
-    resourceType,
+    resource,
   } satisfies AuthMetadata);
 }
 
