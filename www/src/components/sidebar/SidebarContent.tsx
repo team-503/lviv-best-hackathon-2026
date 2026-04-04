@@ -4,25 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CriticalityBadge } from '@/components/ui/criticality-badge';
-import {
-  AlertDialog,
-  AlertDialogTrigger,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogAction,
-  AlertDialogCancel,
-} from '@/components/ui/alert-dialog';
-import { getProductById, type MapPoint, type CriticalityLevel } from '@/data/mockData';
-import { MapPin, Warehouse, Package, Route, AlertTriangle, CheckCircle2, Clock, ExternalLink, Trash2 } from 'lucide-react';
+import type { MapPoint } from '@/types/api';
+import { MapPin, Warehouse, Package, Route, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleRoute, setAllRoutes, clearRoutes } from '@/store/slices/uiSlice';
-import { removePoint } from '@/store/slices/mapPointsSlice';
-import { removeRequest } from '@/store/slices/requestsSlice';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
+
+type CriticalityLevel = 'normal' | 'needed' | 'critical' | 'urgent';
 
 // ─── Points List ───
 function PointCard({
@@ -38,20 +27,7 @@ function PointCard({
   onHover?: () => void;
   onHoverEnd?: () => void;
 }) {
-  const dispatch = useAppDispatch();
-  const isAdmin = useAppSelector((s) => s.auth.user?.role === 'admin');
-  const pointRequests = useAppSelector((s) =>
-    s.requests.requests.filter((r) => r.pointId === point.id),
-  );
-  const requests = pointRequests.filter((r) => point.activeRequests.includes(r.id));
-  const urgentCount = requests.filter((r) => r.criticality === 'urgent').length;
-  const criticalCount = requests.filter((r) => r.criticality === 'critical').length;
   const isWarehouse = point.type === 'warehouse';
-
-  function handleDelete() {
-    pointRequests.forEach((r) => dispatch(removeRequest(r.id)));
-    dispatch(removePoint(point.id));
-  }
 
   return (
     <div
@@ -77,25 +53,8 @@ function PointCard({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium leading-tight truncate">{point.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">{point.address}</p>
           </div>
-          {requests.length > 0 && (
-            <Badge variant="secondary" className="shrink-0 text-xs">
-              {requests.length}
-            </Badge>
-          )}
         </div>
-
-        {(urgentCount > 0 || criticalCount > 0) && (
-          <div className="flex items-center gap-1.5 mt-2">
-            <AlertTriangle className="size-3 text-destructive" />
-            <span className="text-xs text-destructive font-medium">
-              {urgentCount > 0 && `${urgentCount} терміново`}
-              {urgentCount > 0 && criticalCount > 0 && ', '}
-              {criticalCount > 0 && `${criticalCount} критично`}
-            </span>
-          </div>
-        )}
       </button>
 
       <div className="px-3 pb-2 -mt-1 flex items-center gap-1">
@@ -103,46 +62,14 @@ function PointCard({
           variant="ghost"
           size="sm"
           className="h-6 text-xs text-muted-foreground hover:text-foreground px-2"
-          onClick={(e) => { e.stopPropagation(); onOpen(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
         >
           <ExternalLink className="size-3" data-icon="inline-start" />
           Відкрити
         </Button>
-
-        {isAdmin && (
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-xs text-muted-foreground hover:text-destructive px-2 ml-auto"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              }
-            >
-              <Trash2 className="size-3" />
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Видалити {isWarehouse ? 'склад' : 'точку доставки'}?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  <span className="font-medium text-foreground">{point.name}</span> буде видалено
-                  разом з усіма пов'язаними запитами на доставку
-                  {requests.length > 0 && ` (${requests.length} шт.)`}. Цю дію неможливо скасувати.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Скасувати</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>
-                  Видалити
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
       </div>
     </div>
   );
@@ -153,13 +80,13 @@ function PointsTab({
   onOpenPoint,
   onHoverPoint,
 }: {
-  onSelectPoint: (id: string) => void;
-  onOpenPoint: (id: string, type: 'warehouse' | 'delivery') => void;
-  onHoverPoint?: (id: string | null) => void;
+  onSelectPoint: (id: number) => void;
+  onOpenPoint: (id: number, type: 'warehouse' | 'point') => void;
+  onHoverPoint?: (id: number | null) => void;
 }) {
   const points = useAppSelector((s) => s.mapPoints.points);
   const warehouses = points.filter((p) => p.type === 'warehouse');
-  const deliveryPoints = points.filter((p) => p.type === 'delivery');
+  const deliveryPoints = points.filter((p) => p.type === 'point');
 
   return (
     <div className="flex flex-col gap-4">
@@ -199,7 +126,7 @@ function PointsTab({
               key={p.id}
               point={p}
               onSelect={() => onSelectPoint(p.id)}
-              onOpen={() => onOpenPoint(p.id, 'delivery')}
+              onOpen={() => onOpenPoint(p.id, 'point')}
               onHover={() => onHoverPoint?.(p.id)}
               onHoverEnd={() => onHoverPoint?.(null)}
             />
@@ -216,8 +143,10 @@ const CRITICALITY_ORDER: CriticalityLevel[] = ['urgent', 'critical', 'needed', '
 function RequestsTab() {
   const requests = useAppSelector((s) => s.requests.requests);
   const points = useAppSelector((s) => s.mapPoints.points);
+  const products = useAppSelector((s) => s.products.products);
   const sorted = [...requests].sort(
-    (a, b) => CRITICALITY_ORDER.indexOf(a.criticality) - CRITICALITY_ORDER.indexOf(b.criticality),
+    (a, b) =>
+      CRITICALITY_ORDER.indexOf(a.criticality as CriticalityLevel) - CRITICALITY_ORDER.indexOf(b.criticality as CriticalityLevel),
   );
 
   const statusIcon = {
@@ -226,27 +155,27 @@ function RequestsTab() {
     completed: <CheckCircle2 className="size-3 text-emerald-500" />,
   };
 
-  const statusLabel = { pending: 'Очікує', planned: 'Заплановано', completed: 'Виконано' };
+  const statusLabel: Record<string, string> = { pending: 'Очікує', planned: 'Заплановано', completed: 'Виконано' };
 
   return (
     <div className="flex flex-col gap-2">
       {sorted.map((r) => {
-        const point = points.find((p) => p.id === r.pointId);
-        const product = getProductById(r.productId);
+        const point = points.find((p) => String(p.id) === r.pointId);
+        const product = products.find((p) => String(p.id) === r.productId);
         return (
           <div key={r.id} className="rounded-lg border bg-card p-3">
             <div className="flex items-start justify-between gap-2 mb-1.5">
               <p className="text-sm font-medium leading-tight">{point?.name}</p>
-              <CriticalityBadge level={r.criticality} />
+              <CriticalityBadge level={r.criticality as CriticalityLevel} />
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
               <Package className="size-3" />
               <span>
-                {product?.name} — {r.quantity.toLocaleString()} {product?.unit}
+                {product?.name} — {r.quantity.toLocaleString()}
               </span>
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {statusIcon[r.status]}
+              {statusIcon[r.status as keyof typeof statusIcon]}
               <span>{statusLabel[r.status]}</span>
               <span className="ml-auto">
                 {new Date(r.createdAt).toLocaleTimeString('uk-UA', {
@@ -269,6 +198,7 @@ function PlanTab() {
   const { plan, vehicles } = useAppSelector((s) => s.plan);
   const requests = useAppSelector((s) => s.requests.requests);
   const points = useAppSelector((s) => s.mapPoints.points);
+  const products = useAppSelector((s) => s.products.products);
 
   const allIds = plan.routes.map((r) => r.vehicleId);
   const allExpanded = allIds.length > 0 && allIds.every((id) => activeRouteIds.includes(id));
@@ -282,8 +212,8 @@ function PlanTab() {
   }
 
   const statusConfig = {
-    draft:     { label: 'Чернетка', classes: 'bg-muted text-muted-foreground' },
-    active:    { label: 'Активний', classes: 'bg-primary/15 text-primary' },
+    draft: { label: 'Чернетка', classes: 'bg-muted text-muted-foreground' },
+    active: { label: 'Активний', classes: 'bg-primary/15 text-primary' },
     completed: { label: 'Виконано', classes: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
   };
   const status = statusConfig[plan.status];
@@ -294,12 +224,9 @@ function PlanTab() {
         <CardHeader className="pb-2 pt-3 px-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm">
-              План на{' '}
-              {new Date(plan.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' })}
+              План на {new Date(plan.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' })}
             </CardTitle>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${status.classes}`}>
-              {status.label}
-            </span>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${status.classes}`}>{status.label}</span>
           </div>
         </CardHeader>
         <CardContent className="px-3 pb-3">
@@ -314,9 +241,17 @@ function PlanTab() {
               className="h-6 text-xs px-2 text-muted-foreground hover:text-foreground"
               onClick={toggleAll}
             >
-              {allExpanded
-                ? <><ChevronsDownUp className="size-3" data-icon="inline-start" />Згорнути всі</>
-                : <><ChevronsUpDown className="size-3" data-icon="inline-start" />Розгорнути всі</>}
+              {allExpanded ? (
+                <>
+                  <ChevronsDownUp className="size-3" data-icon="inline-start" />
+                  Згорнути всі
+                </>
+              ) : (
+                <>
+                  <ChevronsUpDown className="size-3" data-icon="inline-start" />
+                  Розгорнути всі
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
@@ -333,7 +268,9 @@ function PlanTab() {
                 className={`w-full flex items-center gap-2 p-3 hover:bg-muted/50 transition-colors text-left ${isExpanded ? 'bg-muted/40' : ''}`}
                 onClick={() => dispatch(toggleRoute(route.vehicleId))}
               >
-                <div className={`flex size-6 shrink-0 items-center justify-center rounded-md ${isExpanded ? 'bg-primary' : 'bg-primary/15'}`}>
+                <div
+                  className={`flex size-6 shrink-0 items-center justify-center rounded-md ${isExpanded ? 'bg-primary' : 'bg-primary/15'}`}
+                >
                   <Route className={`size-3.5 ${isExpanded ? 'text-primary-foreground' : 'text-primary'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -346,16 +283,14 @@ function PlanTab() {
               {isExpanded && (
                 <div className="border-t px-3 pb-3 pt-2 flex flex-col gap-2">
                   {route.stops.map((stop, idx) => {
-                    const point = points.find((p) => p.id === stop.pointId);
+                    const point = points.find((p) => String(p.id) === stop.pointId);
                     return (
                       <div key={stop.pointId} className="flex items-start gap-2">
                         <div className="flex flex-col items-center">
                           <div className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
                             {idx + 1}
                           </div>
-                          {idx < route.stops.length - 1 && (
-                            <div className="w-px flex-1 bg-border mt-1 min-h-[12px]" />
-                          )}
+                          {idx < route.stops.length - 1 && <div className="w-px flex-1 bg-border mt-1 min-h-[12px]" />}
                         </div>
                         <div className="flex-1 min-w-0 pb-1">
                           <p className="text-xs font-medium">{point?.name}</p>
@@ -363,10 +298,10 @@ function PlanTab() {
                             {stop.requestIds.map((rid) => {
                               const req = requests.find((r) => r.id === rid);
                               if (!req) return null;
-                              const product = getProductById(req.productId);
+                              const product = products.find((p) => String(p.id) === req.productId);
                               return (
                                 <p key={rid} className="text-xs text-muted-foreground">
-                                  {product?.name}: {req.quantity} {product?.unit}
+                                  {product?.name}: {req.quantity}
                                 </p>
                               );
                             })}
@@ -387,38 +322,30 @@ function PlanTab() {
 
 // ─── Main Sidebar Content ───
 interface SidebarContentProps {
-  onSelectPoint: (id: string) => void;
-  onOpenPoint: (id: string, type: 'warehouse' | 'delivery') => void;
-  onHoverPoint?: (id: string | null) => void;
+  onSelectPoint: (id: number) => void;
+  onOpenPoint: (id: number, type: 'warehouse' | 'point') => void;
+  onHoverPoint?: (id: number | null) => void;
 }
 
 export function SidebarContent({ onSelectPoint, onOpenPoint, onHoverPoint }: SidebarContentProps) {
   const points = useAppSelector((s) => s.mapPoints.points);
   const requests = useAppSelector((s) => s.requests.requests);
-  const urgentCount = requests.filter(
-    (r) => r.criticality === 'urgent' || r.criticality === 'critical',
-  ).length;
+  const urgentCount = requests.filter((r) => r.criticality === 'urgent' || r.criticality === 'critical').length;
 
   return (
     <div className="flex flex-col h-full">
       {/* Stats strip */}
       <div className="grid grid-cols-3 gap-2 p-3 border-b shrink-0">
         <div className="text-center">
-          <p className="text-lg font-bold text-primary">
-            {points.filter((p) => p.type === 'warehouse').length}
-          </p>
+          <p className="text-lg font-bold text-primary">{points.filter((p) => p.type === 'warehouse').length}</p>
           <p className="text-xs text-muted-foreground">Склади</p>
         </div>
         <div className="text-center border-x">
-          <p className="text-lg font-bold text-primary">
-            {points.filter((p) => p.type === 'delivery').length}
-          </p>
+          <p className="text-lg font-bold text-primary">{points.filter((p) => p.type === 'point').length}</p>
           <p className="text-xs text-muted-foreground">Точки</p>
         </div>
         <div className="text-center">
-          <p className={`text-lg font-bold ${urgentCount > 0 ? 'text-destructive' : 'text-primary'}`}>
-            {urgentCount}
-          </p>
+          <p className={`text-lg font-bold ${urgentCount > 0 ? 'text-destructive' : 'text-primary'}`}>{urgentCount}</p>
           <p className="text-xs text-muted-foreground">Критичних</p>
         </div>
       </div>
@@ -445,11 +372,7 @@ export function SidebarContent({ onSelectPoint, onOpenPoint, onHoverPoint }: Sid
         <TabsContent value="points" className="flex-1 min-h-0 mt-0">
           <ScrollArea className="h-full">
             <div className="p-3">
-              <PointsTab
-                onSelectPoint={onSelectPoint}
-                onOpenPoint={onOpenPoint}
-                onHoverPoint={onHoverPoint}
-              />
+              <PointsTab onSelectPoint={onSelectPoint} onOpenPoint={onOpenPoint} onHoverPoint={onHoverPoint} />
             </div>
           </ScrollArea>
         </TabsContent>

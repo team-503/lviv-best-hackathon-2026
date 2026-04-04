@@ -1,42 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { updateQuantity, addStockItem, removeStockItem } from '@/store/slices/mapPointsSlice';
-import { PRODUCTS } from '@/data/mockData';
-import { Package, Warehouse, Plus, Pencil, Trash2, Save, X, Infinity } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getWarehouse, updateWarehouseStock } from '@/lib/api/warehouses';
+import { getProducts } from '@/lib/api/products';
+import type { WarehouseDetailResponseDto, ProductResponseDto } from '@/types/api';
+import { Package, Warehouse, Plus, Pencil, Trash2, Save, X, Infinity, Loader2 } from 'lucide-react';
 
 // ─── Stock Row ───
-function WarehouseStockRow({ pointId, productId, quantity }: {
-  pointId: string;
-  productId: string;
+function WarehouseStockRow({
+  productId,
+  productName,
+  quantity,
+  onSave,
+  onRemove,
+}: {
+  productId: number;
+  productName: string;
   quantity: number;
+  onSave: (productId: number, quantity: number) => void;
+  onRemove: (productId: number) => void;
 }) {
-  const dispatch = useAppDispatch();
-  const product = PRODUCTS.find((p) => p.id === productId);
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(String(quantity));
 
   function save() {
     const num = parseInt(val);
-    if (!isNaN(num) && num >= 0) dispatch(updateQuantity({ pointId, productId, quantity: num }));
+    if (!isNaN(num) && num >= 0) onSave(productId, num);
     setEditing(false);
   }
 
@@ -47,7 +41,7 @@ function WarehouseStockRow({ pointId, productId, quantity }: {
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{product?.name}</p>
+        <p className="text-sm font-medium">{productName}</p>
         <p className="text-xs text-muted-foreground flex items-center gap-0.5 mt-0.5">
           <Infinity className="size-3" /> Необмежені запаси
         </p>
@@ -61,21 +55,29 @@ function WarehouseStockRow({ pointId, productId, quantity }: {
               className="h-7 w-24 text-xs text-right"
               value={val}
               onChange={(e) => setVal(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') save();
+                if (e.key === 'Escape') setEditing(false);
+              }}
               autoFocus
             />
-            <span className="text-xs text-muted-foreground">{product?.unit}</span>
-            <Button size="icon" variant="ghost" className="size-6" onClick={save}><Save className="size-3" /></Button>
-            <Button size="icon" variant="ghost" className="size-6" onClick={() => setEditing(false)}><X className="size-3" /></Button>
+            <Button size="icon" variant="ghost" className="size-6" onClick={save}>
+              <Save className="size-3" />
+            </Button>
+            <Button size="icon" variant="ghost" className="size-6" onClick={() => setEditing(false)}>
+              <X className="size-3" />
+            </Button>
           </div>
         ) : (
           <button
             className="flex items-center gap-1.5 text-sm font-mono hover:text-primary transition-colors group"
-            onClick={() => { setVal(String(quantity)); setEditing(true); }}
+            onClick={() => {
+              setVal(String(quantity));
+              setEditing(true);
+            }}
             title="Редагувати запас"
           >
             <span className="font-semibold">{quantity.toLocaleString()}</span>
-            <span className="text-xs text-muted-foreground">{product?.unit}</span>
             <Pencil className="size-3 opacity-0 group-hover:opacity-60 transition-opacity" />
           </button>
         )}
@@ -84,7 +86,7 @@ function WarehouseStockRow({ pointId, productId, quantity }: {
           size="icon"
           variant="ghost"
           className="size-7 text-destructive hover:text-destructive"
-          onClick={() => dispatch(removeStockItem({ pointId, productId }))}
+          onClick={() => onRemove(productId)}
         >
           <Trash2 className="size-3.5" />
         </Button>
@@ -94,22 +96,29 @@ function WarehouseStockRow({ pointId, productId, quantity }: {
 }
 
 // ─── Add Product Dialog ───
-function AddProductDialog({ warehouseId, existingProductIds, open, onClose }: {
-  warehouseId: string;
-  existingProductIds: string[];
+function AddProductDialog({
+  existingProductIds,
+  allProducts,
+  open,
+  onClose,
+  onAdd,
+}: {
+  existingProductIds: number[];
+  allProducts: ProductResponseDto[];
   open: boolean;
   onClose: () => void;
+  onAdd: (productId: number, quantity: number) => void;
 }) {
-  const dispatch = useAppDispatch();
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('');
 
-  const available = PRODUCTS.filter((p) => !existingProductIds.includes(p.id));
+  const available = allProducts.filter((p) => !existingProductIds.includes(p.id));
 
   function handleAdd() {
     const qty = parseInt(quantity);
-    if (!productId || isNaN(qty) || qty < 0) return;
-    dispatch(addStockItem({ pointId: warehouseId, item: { productId, quantity: qty } }));
+    const pid = parseInt(productId);
+    if (!pid || isNaN(qty) || qty < 0) return;
+    onAdd(pid, qty);
     setProductId('');
     setQuantity('');
     onClose();
@@ -133,13 +142,11 @@ function AddProductDialog({ warehouseId, existingProductIds, open, onClose }: {
               </SelectTrigger>
               <SelectContent>
                 {available.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    Усі товари вже додані
-                  </div>
+                  <div className="px-3 py-2 text-sm text-muted-foreground">Усі товари вже додані</div>
                 ) : (
                   available.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} ({p.unit})
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name}
                     </SelectItem>
                   ))
                 )}
@@ -158,18 +165,17 @@ function AddProductDialog({ warehouseId, existingProductIds, open, onClose }: {
                 onChange={(e) => setQuantity(e.target.value)}
                 className="flex-1"
               />
-              {productId && (
-                <span className="text-sm text-muted-foreground w-8">
-                  {PRODUCTS.find((p) => p.id === productId)?.unit}
-                </span>
-              )}
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Скасувати</Button>
-          <Button onClick={handleAdd} disabled={!isValid}>Додати</Button>
+          <Button variant="outline" onClick={onClose}>
+            Скасувати
+          </Button>
+          <Button onClick={handleAdd} disabled={!isValid}>
+            Додати
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -181,27 +187,103 @@ export function WarehousePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [warehouse, setWarehouse] = useState<WarehouseDetailResponseDto | null>(null);
+  const [products, setProducts] = useState<ProductResponseDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const point = useAppSelector((s) => s.mapPoints.points.find((p) => p.id === id));
+  const fetchWarehouse = useCallback(async () => {
+    if (!id) return;
+    try {
+      setError(null);
+      const data = await getWarehouse(Number(id));
+      setWarehouse(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не вдалося завантажити склад');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
-  if (!point || point.type !== 'warehouse') {
+  useEffect(() => {
+    fetchWarehouse();
+    getProducts()
+      .then(setProducts)
+      .catch(() => {});
+  }, [fetchWarehouse]);
+
+  const handleUpdateStock = useCallback(
+    async (items: { productId: number; quantity: number }[]) => {
+      if (!id) return;
+      await updateWarehouseStock(Number(id), items);
+      await fetchWarehouse();
+    },
+    [id, fetchWarehouse],
+  );
+
+  const handleSaveQuantity = useCallback(
+    async (productId: number, quantity: number) => {
+      if (!warehouse) return;
+      const items = warehouse.stock.map((s) =>
+        s.product.id === productId ? { productId: s.product.id, quantity } : { productId: s.product.id, quantity: s.quantity },
+      );
+      await handleUpdateStock(items);
+    },
+    [warehouse, handleUpdateStock],
+  );
+
+  const handleRemoveProduct = useCallback(
+    async (productId: number) => {
+      if (!warehouse) return;
+      const items = warehouse.stock
+        .filter((s) => s.product.id !== productId)
+        .map((s) => ({ productId: s.product.id, quantity: s.quantity }));
+      await handleUpdateStock(items);
+    },
+    [warehouse, handleUpdateStock],
+  );
+
+  const handleAddProduct = useCallback(
+    async (productId: number, quantity: number) => {
+      if (!warehouse) return;
+      const items = [...warehouse.stock.map((s) => ({ productId: s.product.id, quantity: s.quantity })), { productId, quantity }];
+      await handleUpdateStock(items);
+    },
+    [warehouse, handleUpdateStock],
+  );
+
+  if (loading) {
     return (
-      <PageLayout title="Не знайдено">
-        <p className="text-muted-foreground">Склад не знайдено.</p>
-        <Button className="mt-4" onClick={() => navigate('/')}>На головну</Button>
+      <PageLayout title="Завантаження...">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        </div>
       </PageLayout>
     );
   }
 
-  const totalProducts = point.stock.length;
-  const totalUnits = point.stock.reduce((acc, s) => acc + s.quantity, 0);
+  if (error || !warehouse) {
+    return (
+      <PageLayout title="Не знайдено">
+        <p className="text-muted-foreground">{error ?? 'Склад не знайдено.'}</p>
+        <Button className="mt-4" onClick={() => navigate('/')}>
+          На головну
+        </Button>
+      </PageLayout>
+    );
+  }
+
+  const totalProducts = warehouse.stock.length;
+  const totalUnits = warehouse.stock.reduce((acc, s) => acc + s.quantity, 0);
 
   return (
-    <PageLayout title={point.name} subtitle="Склад">
+    <PageLayout title={warehouse.name} subtitle="Склад">
       {/* Info strip */}
       <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
         <Warehouse className="size-4 text-indigo-500" />
-        <span>{point.address}</span>
+        <span>
+          {warehouse.location.lat.toFixed(4)}, {warehouse.location.lng.toFixed(4)}
+        </span>
       </div>
 
       {/* Stats */}
@@ -238,9 +320,7 @@ export function WarehousePage() {
                 <Package className="size-4 text-primary" />
                 Товари на складі
               </CardTitle>
-              <CardDescription className="mt-1">
-                Натисніть на кількість щоб відредагувати
-              </CardDescription>
+              <CardDescription className="mt-1">Натисніть на кількість щоб відредагувати</CardDescription>
             </div>
             <Button size="sm" onClick={() => setAddDialogOpen(true)}>
               <Plus className="size-4" data-icon="inline-start" />
@@ -249,13 +329,11 @@ export function WarehousePage() {
           </div>
         </CardHeader>
         <CardContent>
-          {point.stock.length === 0 ? (
+          {warehouse.stock.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Package className="size-8 text-muted-foreground/40 mb-2" />
               <p className="text-sm text-muted-foreground">Товарів немає</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Натисніть «Додати товар» щоб почати
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Натисніть «Додати товар» щоб почати</p>
             </div>
           ) : (
             <>
@@ -265,12 +343,14 @@ export function WarehousePage() {
                 <div className="flex-1">Товар</div>
                 <div className="text-right">Доступна кількість</div>
               </div>
-              {point.stock.map((s) => (
+              {warehouse.stock.map((s) => (
                 <WarehouseStockRow
-                  key={s.productId}
-                  pointId={point.id}
-                  productId={s.productId}
+                  key={s.product.id}
+                  productId={s.product.id}
+                  productName={s.product.name}
                   quantity={s.quantity}
+                  onSave={handleSaveQuantity}
+                  onRemove={handleRemoveProduct}
                 />
               ))}
             </>
@@ -279,10 +359,11 @@ export function WarehousePage() {
       </Card>
 
       <AddProductDialog
-        warehouseId={point.id}
-        existingProductIds={point.stock.map((s) => s.productId)}
+        existingProductIds={warehouse.stock.map((s) => s.product.id)}
+        allProducts={products}
         open={addDialogOpen}
         onClose={() => setAddDialogOpen(false)}
+        onAdd={handleAddProduct}
       />
     </PageLayout>
   );

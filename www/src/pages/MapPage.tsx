@@ -11,34 +11,37 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setSelectedPoint, setMobileSidebarOpen } from '@/store/slices/uiSlice';
 import { useSimulation } from '@/hooks/useSimulation';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 
 export function MapPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [adminOpen, setAdminOpen] = useState(false);
-  const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
-  const [flyToTrigger, setFlyToTrigger] = useState<{ id: string; key: number } | null>(null);
+  const [hoveredPointId, setHoveredPointId] = useState<number | null>(null);
+  const [flyToTrigger, setFlyToTrigger] = useState<{ id: number; key: number } | null>(null);
   const { selectedPointId, activeRouteIds, mobileSidebarOpen } = useAppSelector((s) => s.ui);
   const user = useAppSelector((s) => s.auth.user);
+  const loading = useAppSelector((s) => s.mapPoints.loading);
   const isAdmin = user?.role === 'admin';
   const { status, activeRoutes } = useSimulation();
 
-  function handleSelectPoint(id: string) {
-    dispatch(setSelectedPoint(id));
+  function handleSelectPoint(id: number) {
+    dispatch(setSelectedPoint(String(id)));
     setFlyToTrigger({ id, key: Date.now() });
     dispatch(setMobileSidebarOpen(false));
   }
 
-  function handleHoverPoint(id: string | null) {
+  function handleHoverPoint(id: number | null) {
     setHoveredPointId(id);
   }
 
-  function handleOpenPoint(id: string, type: 'warehouse' | 'delivery') {
+  function handleOpenPoint(id: number, type: 'warehouse' | 'point') {
     navigate(type === 'warehouse' ? `/warehouse/${id}` : `/point/${id}`);
   }
 
   const simActive = status === 'stage1' || status === 'stage2';
+
+  const selectedNumericId = selectedPointId != null ? Number(selectedPointId) : null;
 
   return (
     <div className="flex flex-col h-svh bg-background">
@@ -47,17 +50,18 @@ export function MapPage() {
 
       <div className="flex flex-1 min-h-0">
         <aside className="hidden lg:flex flex-col w-80 xl:w-96 shrink-0 border-r bg-card">
-          <SidebarContent
-            onSelectPoint={handleSelectPoint}
-            onOpenPoint={handleOpenPoint}
-            onHoverPoint={handleHoverPoint}
-          />
+          <SidebarContent onSelectPoint={handleSelectPoint} onOpenPoint={handleOpenPoint} onHoverPoint={handleHoverPoint} />
         </aside>
 
         <main className="relative flex-1 min-w-0">
+          {loading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50">
+              <Loader2 className="size-8 animate-spin text-primary" />
+            </div>
+          )}
           <MapView
-            selectedPointId={selectedPointId}
-            onSelectPoint={(id) => dispatch(setSelectedPoint(id))}
+            selectedPointId={selectedNumericId}
+            onSelectPoint={(id) => dispatch(setSelectedPoint(id != null ? String(id) : null))}
             activeRouteIds={simActive ? [] : activeRouteIds}
             simulationRoutes={simActive ? activeRoutes : []}
             hoveredPointId={hoveredPointId}
@@ -80,11 +84,7 @@ export function MapPage() {
       <Sheet open={mobileSidebarOpen} onOpenChange={(open) => dispatch(setMobileSidebarOpen(open))}>
         <SheetContent side="left" className="p-0 w-80 flex flex-col">
           <SheetTitle className="sr-only">Навігаційне меню</SheetTitle>
-          <SidebarContent
-            onSelectPoint={handleSelectPoint}
-            onOpenPoint={handleOpenPoint}
-            onHoverPoint={handleHoverPoint}
-          />
+          <SidebarContent onSelectPoint={handleSelectPoint} onOpenPoint={handleOpenPoint} onHoverPoint={handleHoverPoint} />
         </SheetContent>
       </Sheet>
 

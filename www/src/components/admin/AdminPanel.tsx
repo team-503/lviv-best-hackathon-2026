@@ -1,40 +1,34 @@
 import { useState, useCallback } from 'react';
 import { Plus, Trash2, Warehouse, MapPin, Loader2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAppDispatch } from '@/store/hooks';
-import { addPoint } from '@/store/slices/mapPointsSlice';
-import { PRODUCTS, type StockItem, type PointType } from '@/data/mockData';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
+import { createPoint } from '@/lib/api/points';
+import { createWarehouse } from '@/lib/api/warehouses';
 import { LocationPicker } from './LocationPicker';
 
+type PointType = 'warehouse' | 'point';
+
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=uk`,
-    { headers: { 'Accept-Language': 'uk' } },
-  );
+  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=uk`, {
+    headers: { 'Accept-Language': 'uk' },
+  });
   if (!res.ok) return '';
   const data = await res.json();
   const a = data.address ?? {};
-  const parts = [
-    a.road ?? a.pedestrian ?? a.path ?? '',
-    a.house_number ?? '',
-    a.city ?? a.town ?? a.village ?? '',
-  ].filter(Boolean);
+  const parts = [a.road ?? a.pedestrian ?? a.path ?? '', a.house_number ?? '', a.city ?? a.town ?? a.village ?? ''].filter(
+    Boolean,
+  );
   return parts.length ? parts.join(', ') : (data.display_name ?? '');
 }
 
 interface StockRow {
-  productId: string;
+  productId: number;
   quantity: string;
   minThreshold: string;
 }
@@ -57,9 +51,11 @@ interface AdminPanelProps {
 
 export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
   const dispatch = useAppDispatch();
+  const products = useAppSelector((s) => s.products.products);
   const [tab, setTab] = useState<PointType>('warehouse');
   const [form, setForm] = useState<FormState>(emptyForm);
   const [addressLoading, setAddressLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleLocationChange = useCallback(async (lat: number, lng: number) => {
     setForm((f) => ({ ...f, location: { lat, lng } }));
@@ -84,7 +80,7 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
 
   function addStockRow() {
     const usedIds = new Set(form.stock.map((s) => s.productId));
-    const next = PRODUCTS.find((p) => !usedIds.has(p.id));
+    const next = products.find((p) => !usedIds.has(p.id));
     if (!next) return;
     setForm((f) => ({ ...f, stock: [...f.stock, { productId: next.id, quantity: '', minThreshold: '' }] }));
   }
@@ -101,42 +97,58 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
     setForm((f) => ({ ...f, stock: f.stock.filter((_, i) => i !== idx) }));
   }
 
-  function usedProductIds(currentIdx: number): Set<string> {
+  function usedProductIds(currentIdx: number): Set<number> {
     return new Set(form.stock.filter((_, i) => i !== currentIdx).map((s) => s.productId));
   }
 
-  const canSubmit =
-    form.name.trim() !== '' &&
-    form.address.trim() !== '' &&
-    form.location !== null;
+  const canSubmit = form.name.trim() !== '' && form.location !== null && !submitting;
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!form.location) return;
-    const stock: StockItem[] = form.stock
-      .filter((s) => s.quantity !== '')
-      .map((s) => ({
-        productId: s.productId,
-        quantity: Math.max(0, Number(s.quantity) || 0),
-        ...(tab === 'delivery' && s.minThreshold !== ''
-          ? { minThreshold: Math.max(0, Number(s.minThreshold) || 0) }
-          : {}),
-      }));
-
-    dispatch(
-      addPoint({
-        name: form.name.trim(),
-        type: tab,
-        lat: form.location.lat,
-        lng: form.location.lng,
-        address: form.address.trim(),
-        stock,
-      }),
-    );
-    handleClose();
+    setSubmitting(true);
+    try {
+      if (tab === 'point') {
+        const stock = form.stock
+          .filter((s) => s.quantity !== '')
+          .map((s) => ({
+            productId: s.productId,
+            quantity: Math.max(0, Number(s.quantity) || 0),
+            minThreshold: s.minThreshold !== '' ? Math.max(0, Number(s.minThreshold) || 0) : 0,
+          }));
+        await createPoint({
+          name: form.name.trim(),
+          location: { lat: form.location.lat, lng: form.location.lng },
+          stock,
+        });
+      } else {
+        const stock = form.stock
+          .filter((s) => s.quantity !== '')
+          .map((s) => ({
+            productId: s.productId,
+            quantity: Math.max(0, Number(s.quantity) || 0),
+          }));
+        await createWarehouse({
+          name: form.name.trim(),
+          location: { lat: form.location.lat, lng: form.location.lng },
+          stock,
+        });
+      }
+      dispatch(fetchMapPoints());
+      handleClose();
+    } catch {
+      // TODO: show error toast
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
+    >
       <DialogContent className="sm:max-w-lg max-h-[90svh] flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="px-4 pt-4 pb-0">
           <DialogTitle>Додати об'єкт</DialogTitle>
@@ -149,7 +161,7 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                 <Warehouse className="size-3.5" />
                 Склад
               </TabsTrigger>
-              <TabsTrigger value="delivery" className="flex-1 gap-1.5">
+              <TabsTrigger value="point" className="flex-1 gap-1.5">
                 <MapPin className="size-3.5" />
                 Точка доставки
               </TabsTrigger>
@@ -190,10 +202,7 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                 {/* Location picker */}
                 <div className="flex flex-col gap-1.5">
                   <Label>Розташування</Label>
-                  <LocationPicker
-                    value={form.location}
-                    onChange={handleLocationChange}
-                  />
+                  <LocationPicker value={form.location} onChange={handleLocationChange} />
                   {form.location && (
                     <button
                       type="button"
@@ -215,7 +224,7 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                       size="sm"
                       className="h-7 text-xs gap-1"
                       onClick={addStockRow}
-                      disabled={form.stock.length >= PRODUCTS.length}
+                      disabled={form.stock.length >= products.length}
                     >
                       <Plus className="size-3" />
                       Додати товар
@@ -237,11 +246,11 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                           <select
                             className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus:border-ring focus:ring-[3px] focus:ring-ring/50"
                             value={row.productId}
-                            onChange={(e) => updateStockRow(idx, { productId: e.target.value })}
+                            onChange={(e) => updateStockRow(idx, { productId: Number(e.target.value) })}
                           >
-                            {PRODUCTS.map((p) => (
+                            {products.map((p) => (
                               <option key={p.id} value={p.id} disabled={used.has(p.id)}>
-                                {p.name} ({p.unit})
+                                {p.name}
                               </option>
                             ))}
                           </select>
@@ -256,7 +265,7 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                             onChange={(e) => updateStockRow(idx, { quantity: e.target.value })}
                           />
                         </div>
-                        {tab === 'delivery' && (
+                        {tab === 'point' && (
                           <div className="w-24 flex flex-col gap-1">
                             <Label className="text-xs text-muted-foreground">Мін. поріг</Label>
                             <Input
@@ -291,7 +300,9 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
             Скасувати
           </Button>
           <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {tab === 'warehouse' ? <Warehouse className="size-3.5 mr-1.5" /> : <MapPin className="size-3.5 mr-1.5" />}
+            {submitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+            {!submitting &&
+              (tab === 'warehouse' ? <Warehouse className="size-3.5 mr-1.5" /> : <MapPin className="size-3.5 mr-1.5" />)}
             Додати
           </Button>
         </DialogFooter>

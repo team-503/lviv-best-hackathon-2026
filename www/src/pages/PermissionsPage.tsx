@@ -1,47 +1,18 @@
-import { useState, useCallback } from 'react';
-import { Users, Warehouse, MapPin, ShieldCheck, User, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Users, Warehouse, MapPin, ShieldCheck, User, ChevronRight, Loader2 } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/lib/utils';
-import {
-  getLevel,
-  levelToArray,
-  type Profile,
-  type UserPermission,
-  type PermissionLevel,
-  type ResourceType,
-} from '@/lib/permissions';
+import { getLevel, levelToArray } from '@/lib/permissions';
+import { getUsers } from '@/lib/api/profiles';
+import { getPermissions, createPermission, updatePermission, deletePermission } from '@/lib/api/permissions';
+import type { UserResponseDto, PermissionResponseDto } from '@/types/api';
 
-// ─── Mock data ───
-const MOCK_PROFILES: Profile[] = [
-  { id: 'u2', email: 'warehouse1@logiflow.ua', display_name: 'Іван Мельник', role: 'user' },
-  { id: 'u3', email: 'warehouse2@logiflow.ua', display_name: 'Олена Бондар', role: 'user' },
-  { id: 'u4', email: 'delivery1@logiflow.ua', display_name: 'Петро Савченко', role: 'user' },
-  { id: 'u5', email: 'delivery2@logiflow.ua', display_name: 'Марія Коваленко', role: 'user' },
-  { id: 'u6', email: 'delivery3@logiflow.ua', display_name: 'Дмитро Поліщук', role: 'user' },
-];
-
-const MOCK_PERMISSIONS: Record<string, UserPermission[]> = {
-  u2: [
-    { id: 1, user_id: 'u2', resource_type: 'warehouse', resource_id: 'w1', permissions: ['read', 'write'] },
-    { id: 2, user_id: 'u2', resource_type: 'warehouse', resource_id: 'w2', permissions: ['read'] },
-  ],
-  u3: [{ id: 3, user_id: 'u3', resource_type: 'warehouse', resource_id: 'w2', permissions: ['read', 'write'] }],
-  u4: [
-    { id: 4, user_id: 'u4', resource_type: 'point', resource_id: 'd1', permissions: ['read', 'write'] },
-    { id: 5, user_id: 'u4', resource_type: 'point', resource_id: 'd2', permissions: ['read'] },
-  ],
-  u5: [
-    { id: 6, user_id: 'u5', resource_type: 'point', resource_id: 'd3', permissions: ['read', 'write'] },
-    { id: 7, user_id: 'u5', resource_type: 'point', resource_id: 'd4', permissions: ['read', 'write'] },
-  ],
-  u6: [],
-};
-
-let nextPermId = 100;
+type PermissionLevel = 'none' | 'read' | 'write';
+type ResourceType = 'point' | 'warehouse';
 
 // ─── Permission toggle ───
 const LEVELS: { value: PermissionLevel; label: string }[] = [
@@ -89,18 +60,16 @@ function PermissionToggle({
 // ─── Resource row ───
 function ResourceRow({
   name,
-  address,
   type,
   resourceId,
   perm,
   onChanged,
 }: {
   name: string;
-  address: string;
   type: ResourceType;
-  resourceId: string;
-  perm: UserPermission | undefined;
-  onChanged: (resourceType: ResourceType, resourceId: string, newPerms: string[]) => void;
+  resourceId: number;
+  perm: PermissionResponseDto | undefined;
+  onChanged: (resourceType: ResourceType, resourceId: number, newPerms: string[]) => void;
 }) {
   const level = getLevel(perm?.permissions);
 
@@ -128,7 +97,7 @@ function ResourceRow({
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium leading-tight truncate">{name}</p>
-        <p className="text-xs text-muted-foreground truncate">{address}</p>
+        <p className="text-xs text-muted-foreground truncate">{isWarehouse ? 'Склад' : 'Точка доставки'}</p>
       </div>
 
       <PermissionToggle level={level} onChange={handleChange} />
@@ -150,7 +119,7 @@ function UserCard({
   permCount,
   onClick,
 }: {
-  profile: Profile;
+  profile: UserResponseDto;
   selected: boolean;
   permCount: number;
   onClick: () => void;
@@ -167,7 +136,7 @@ function UserCard({
         <User className="size-4 text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium leading-tight truncate">{profile.display_name ?? profile.email}</p>
+        <p className="text-sm font-medium leading-tight truncate">{profile.displayName ?? profile.email}</p>
         <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -190,45 +159,102 @@ function UserCard({
 export function PermissionsPage() {
   const points = useAppSelector((s) => s.mapPoints.points);
   const warehouses = points.filter((p) => p.type === 'warehouse');
-  const deliveryPoints = points.filter((p) => p.type === 'delivery');
+  const deliveryPoints = points.filter((p) => p.type === 'point');
+
+  const [users, setUsers] = useState<UserResponseDto[]>([]);
+  const [allPerms, setAllPerms] = useState<PermissionResponseDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  // Local copy of mock permissions (mutable during session)
-  const [allPerms, setAllPerms] = useState<Record<string, UserPermission[]>>(() => structuredClone(MOCK_PERMISSIONS));
 
-  const permissions = selectedUserId ? (allPerms[selectedUserId] ?? []) : [];
-  const selectedProfile = MOCK_PROFILES.find((p) => p.id === selectedUserId);
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+        const [fetchedUsers, fetchedPerms] = await Promise.all([getUsers(), getPermissions()]);
+        if (!cancelled) {
+          setUsers(fetchedUsers);
+          setAllPerms(fetchedPerms);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Помилка завантаження даних');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  function findPerm(type: ResourceType, resourceId: string) {
-    return permissions.find((p) => p.resource_type === type && p.resource_id === resourceId);
+  const userPerms = selectedUserId ? allPerms.filter((p) => p.userId === selectedUserId) : [];
+  const selectedProfile = users.find((u) => u.id === selectedUserId);
+
+  function findPerm(type: ResourceType, resourceId: number) {
+    return userPerms.find((p) => p.resourceType === type && p.resourceId === resourceId);
   }
 
   const handlePermissionChanged = useCallback(
-    (userId: string, resourceType: ResourceType, resourceId: string, newPerms: string[]) => {
-      setAllPerms((prev) => {
-        const userPerms = [...(prev[userId] ?? [])];
-        const idx = userPerms.findIndex((p) => p.resource_type === resourceType && p.resource_id === resourceId);
+    async (userId: string, resourceType: ResourceType, resourceId: number, newPerms: string[]) => {
+      const existing = allPerms.find(
+        (p) => p.userId === userId && p.resourceType === resourceType && p.resourceId === resourceId,
+      );
+
+      try {
         if (newPerms.length === 0) {
-          // Remove
-          if (idx !== -1) userPerms.splice(idx, 1);
-        } else if (idx !== -1) {
+          // Delete
+          if (existing) {
+            await deletePermission(existing.id);
+            setAllPerms((prev) => prev.filter((p) => p.id !== existing.id));
+          }
+        } else if (existing) {
           // Update
-          userPerms[idx] = { ...userPerms[idx], permissions: newPerms };
+          const updated = await updatePermission(existing.id, newPerms);
+          setAllPerms((prev) => prev.map((p) => (p.id === existing.id ? updated : p)));
         } else {
-          // Insert
-          userPerms.push({
-            id: nextPermId++,
-            user_id: userId,
-            resource_type: resourceType,
-            resource_id: resourceId,
+          // Create
+          const created = await createPermission({
+            userId,
+            resourceType,
+            resourceId,
             permissions: newPerms,
           });
+          setAllPerms((prev) => [...prev, created]);
         }
-        return { ...prev, [userId]: userPerms };
-      });
+      } catch (err) {
+        console.error('Failed to update permission:', err);
+      }
     },
-    [],
+    [allPerms],
   );
+
+  if (loading) {
+    return (
+      <PageLayout title="LogiFlow" subtitle="Доступи користувачів">
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageLayout title="LogiFlow" subtitle="Доступи користувачів">
+        <div className="flex flex-col items-center justify-center py-24 gap-3 text-destructive">
+          <p className="text-sm">{error}</p>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout title="LogiFlow" subtitle="Доступи користувачів">
@@ -250,23 +276,23 @@ export function PermissionsPage() {
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <span className="text-sm font-semibold">Користувачі</span>
               <Badge variant="secondary" className="text-xs">
-                {MOCK_PROFILES.length}
+                {users.length}
               </Badge>
             </div>
 
-            {MOCK_PROFILES.length === 0 && (
+            {users.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-12">Інших користувачів не знайдено</p>
             )}
 
-            {MOCK_PROFILES.length > 0 && (
+            {users.length > 0 && (
               <ScrollArea className="max-h-[420px]">
                 <div className="p-2 flex flex-col gap-1">
-                  {MOCK_PROFILES.map((profile) => (
+                  {users.map((profile) => (
                     <UserCard
                       key={profile.id}
                       profile={profile}
                       selected={selectedUserId === profile.id}
-                      permCount={(allPerms[profile.id] ?? []).length}
+                      permCount={allPerms.filter((p) => p.userId === profile.id).length}
                       onClick={() => setSelectedUserId(profile.id)}
                     />
                   ))}
@@ -290,7 +316,7 @@ export function PermissionsPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold leading-tight truncate">
-                      {selectedProfile?.display_name ?? selectedProfile?.email}
+                      {selectedProfile?.displayName ?? selectedProfile?.email}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">{selectedProfile?.email}</p>
                   </div>
@@ -308,7 +334,6 @@ export function PermissionsPage() {
                         <ResourceRow
                           key={wh.id}
                           name={wh.name}
-                          address={wh.address}
                           type="warehouse"
                           resourceId={wh.id}
                           perm={findPerm('warehouse', wh.id)}
@@ -331,7 +356,6 @@ export function PermissionsPage() {
                         <ResourceRow
                           key={pt.id}
                           name={pt.name}
-                          address={pt.address}
                           type="point"
                           resourceId={pt.id}
                           perm={findPerm('point', pt.id)}

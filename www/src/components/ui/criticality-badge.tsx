@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
-import type { CriticalityLevel } from '@/data/mockData';
+
+type CriticalityLevel = 'normal' | 'needed' | 'critical' | 'urgent';
 
 const CONFIG: Record<CriticalityLevel, { label: string; classes: string }> = {
   urgent: {
@@ -28,13 +29,7 @@ interface Props {
 export function CriticalityBadge({ level, className }: Props) {
   const { label, classes } = CONFIG[level];
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
-        classes,
-        className,
-      )}
-    >
+    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', classes, className)}>
       {label}
     </span>
   );
