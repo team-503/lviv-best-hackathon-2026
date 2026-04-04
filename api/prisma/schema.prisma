@@ -1,9 +1,6 @@
-/// Schema managed by Supabase migrations.
-/// Sync: npx prisma db pull && npx prisma generate
-
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions", "partialIndexes"]
+  previewFeatures = ["partialIndexes", "postgresqlExtensions"]
 }
 
 datasource db {
@@ -660,6 +657,16 @@ model warehouses {
   warehouse_stock warehouse_stock[]
 
   @@index([location], map: "idx_warehouses_location", type: Gist)
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model simulation_state {
+  id     Int    @id @default(1)
+  status String @default("idle")
+  day    Int    @default(1)
+
   @@schema("public")
 }
 
