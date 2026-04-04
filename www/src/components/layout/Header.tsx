@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleTheme, setMobileSidebarOpen } from '@/store/slices/uiSlice';
 import { logout } from '@/store/slices/authSlice';
+import { supabase } from '@/lib/supabase';
 import { useSimulation } from '@/hooks/useSimulation';
 import type { SimStatus } from '@/store/slices/simulationSlice';
 import { cn } from '@/lib/utils';
@@ -13,11 +14,24 @@ const ROLE_LABELS: Record<string, string> = {
   delivery: 'Точка доставки',
 };
 
-const SIM_BUTTON: Record<SimStatus, { label: string; icon: React.ElementType; variant: 'default' | 'destructive' | 'outline' | 'secondary'; className?: string }> = {
-  idle:     { label: 'Запустити симуляцію', icon: Play,          variant: 'default' },
-  stage1:   { label: 'Виконати Етап 1',     icon: SkipForward,   variant: 'default',      className: 'bg-amber-500 hover:bg-amber-600 text-white border-0' },
-  stage2:   { label: 'Завершити симуляцію', icon: CheckCheck,    variant: 'default',      className: 'bg-emerald-600 hover:bg-emerald-700 text-white border-0' },
-  complete: { label: 'Новий день',          icon: CalendarDays,  variant: 'outline' },
+const SIM_BUTTON: Record<
+  SimStatus,
+  { label: string; icon: React.ElementType; variant: 'default' | 'destructive' | 'outline' | 'secondary'; className?: string }
+> = {
+  idle: { label: 'Запустити симуляцію', icon: Play, variant: 'default' },
+  stage1: {
+    label: 'Виконати Етап 1',
+    icon: SkipForward,
+    variant: 'default',
+    className: 'bg-amber-500 hover:bg-amber-600 text-white border-0',
+  },
+  stage2: {
+    label: 'Завершити симуляцію',
+    icon: CheckCheck,
+    variant: 'default',
+    className: 'bg-emerald-600 hover:bg-emerald-700 text-white border-0',
+  },
+  complete: { label: 'Новий день', icon: CalendarDays, variant: 'outline' },
 };
 
 interface HeaderProps {
@@ -37,12 +51,7 @@ export function Header({ showSimulation = false }: HeaderProps) {
       {/* Left */}
       <div className="flex items-center gap-3">
         {showSimulation && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => dispatch(setMobileSidebarOpen(true))}
-          >
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => dispatch(setMobileSidebarOpen(true))}>
             <Menu className="size-5" />
             <span className="sr-only">Меню</span>
           </Button>
@@ -53,9 +62,7 @@ export function Header({ showSimulation = false }: HeaderProps) {
           </div>
           <div className="hidden sm:block">
             <span className="text-sm font-semibold leading-none">LogiFlow</span>
-            <p className="text-xs text-muted-foreground leading-none mt-0.5">
-              День {day}
-            </p>
+            <p className="text-xs text-muted-foreground leading-none mt-0.5">День {day}</p>
           </div>
         </div>
       </div>
@@ -86,9 +93,7 @@ export function Header({ showSimulation = false }: HeaderProps) {
             </div>
             <div className="hidden sm:block">
               <p className="text-xs font-medium leading-none">{user.name}</p>
-              <p className="text-xs text-muted-foreground leading-none mt-0.5">
-                {ROLE_LABELS[user.role]}
-              </p>
+              <p className="text-xs text-muted-foreground leading-none mt-0.5">{ROLE_LABELS[user.role]}</p>
             </div>
           </div>
         )}
@@ -96,7 +101,10 @@ export function Header({ showSimulation = false }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => dispatch(logout())}
+          onClick={() => {
+            supabase.auth.signOut();
+            dispatch(logout());
+          }}
           aria-label="Вийти"
           title="Вийти"
         >

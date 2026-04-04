@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAppDispatch } from '@/store/hooks';
-import { loginSuccess, registerUser } from '@/store/slices/authSlice';
+import { supabase } from '@/lib/supabase';
 import type { UserRole } from '@/data/mockData';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,16 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Truck } from 'lucide-react';
-import type { AuthUser } from '@/store/slices/authSlice';
 
 const ROLES: { value: UserRole; label: string }[] = [
   { value: 'admin', label: 'Адміністратор' },
   { value: 'warehouse', label: 'Менеджер складу' },
-  { value: 'delivery', label: 'Кур\'єр' },
+  { value: 'delivery', label: "Кур'єр" },
 ];
 
 export function RegisterPage() {
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
@@ -26,8 +23,9 @@ export function RegisterPage() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('delivery');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
@@ -36,13 +34,20 @@ export function RegisterPage() {
       return;
     }
 
-    const result = registerUser(name, email, password, role);
-    if ('error' in result) {
-      setError(result.error);
+    setLoading(true);
+
+    const { error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, role } },
+    });
+
+    if (authError) {
+      setError(authError.message);
+      setLoading(false);
       return;
     }
 
-    dispatch(loginSuccess(result as AuthUser));
     navigate('/', { replace: true });
   }
 
@@ -115,12 +120,12 @@ export function RegisterPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {error && (
-                <p className="text-xs text-destructive">{error}</p>
-              )}
+              {error && <p className="text-xs text-destructive">{error}</p>}
             </CardContent>
             <CardFooter className="flex flex-col gap-3">
-              <Button type="submit" className="w-full">Зареєструватись</Button>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Завантаження...' : 'Зареєструватись'}
+              </Button>
               <p className="text-xs text-muted-foreground text-center">
                 Вже маєте акаунт?{' '}
                 <Link to="/login" className="text-primary underline-offset-4 hover:underline">
