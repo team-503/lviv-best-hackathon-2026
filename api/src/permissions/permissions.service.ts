@@ -1,10 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { type PermissionLevel } from '../common/enums/permission-level.enum';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ResourceType } from '../common/enums/resource-type.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePermissionDto } from './dto/request/create-permission.dto';
 import type { UpdatePermissionDto } from './dto/request/update-permission.dto';
 import type { PermissionResponseDto } from './dto/response/permission.response.dto';
+import { toPermissionResponseDto } from './permissions.helper';
 
 @Injectable()
 export class PermissionsService {
@@ -14,54 +14,35 @@ export class PermissionsService {
     const permissions = await this.prisma.user_permissions.findMany({
       orderBy: { id: 'asc' },
     });
-    return permissions.map((p) => this.toResponseDto(p));
+    return permissions.map((p) => toPermissionResponseDto(p));
   }
 
   async create(dto: CreatePermissionDto): Promise<PermissionResponseDto> {
-    await this.validateUserExists(dto.userId);
-    await this.validateResourceExists(dto.resourceType, dto.resourceId);
+    await Promise.all([this.validateUserExists(dto.userId), this.validateResourceExists(dto.resourceType, dto.resourceId)]);
 
-    try {
-      const permission = await this.prisma.user_permissions.create({
-        data: {
-          user_id: dto.userId,
-          resource_type: dto.resourceType,
-          resource_id: dto.resourceId,
-          permissions: dto.permissions,
-        },
-      });
+    const permission = await this.prisma.user_permissions.create({
+      data: {
+        user_id: dto.userId,
+        resource_type: dto.resourceType,
+        resource_id: dto.resourceId,
+        permissions: dto.permissions,
+      },
+    });
 
-      return this.toResponseDto(permission);
-    } catch (error: unknown) {
-      if (typeof error === 'object' && error !== null && 'code' in error && (error as { code: string }).code === 'P2002') {
-        throw new ConflictException('Permission for this user/resource combination already exists');
-      }
-      throw error;
-    }
+    return toPermissionResponseDto(permission);
   }
 
   async update(id: number, dto: UpdatePermissionDto): Promise<PermissionResponseDto> {
-    await this.findOneOrFail(id);
-
     const permission = await this.prisma.user_permissions.update({
       where: { id },
       data: { permissions: dto.permissions },
     });
 
-    return this.toResponseDto(permission);
+    return toPermissionResponseDto(permission);
   }
 
   async remove(id: number): Promise<void> {
-    await this.findOneOrFail(id);
     await this.prisma.user_permissions.delete({ where: { id } });
-  }
-
-  private async findOneOrFail(id: number) {
-    const permission = await this.prisma.user_permissions.findUnique({ where: { id } });
-    if (!permission) {
-      throw new NotFoundException(`Permission with ID ${id} not found`);
-    }
-    return permission;
   }
 
   private async validateUserExists(userId: string): Promise<void> {
@@ -83,21 +64,5 @@ export class PermissionsService {
         throw new NotFoundException(`Warehouse with ID ${resourceId} not found`);
       }
     }
-  }
-
-  private toResponseDto(p: {
-    id: number;
-    user_id: string;
-    resource_type: string;
-    resource_id: number;
-    permissions: string[];
-  }): PermissionResponseDto {
-    return {
-      id: p.id,
-      userId: p.user_id,
-      resourceType: p.resource_type as ResourceType,
-      resourceId: p.resource_id,
-      permissions: p.permissions as PermissionLevel[],
-    };
   }
 }
