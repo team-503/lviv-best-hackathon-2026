@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { DeliveryPlansService } from '../delivery-plans/delivery-plans.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { toDeliveryRequest } from './delivery-requests.helper';
 import type { CreateDeliveryRequestDto } from './dto/request/create-delivery-request.dto';
@@ -7,7 +8,12 @@ import type { DeliveryRequestResponseDto } from './dto/response/delivery-request
 
 @Injectable()
 export class DeliveryRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(DeliveryRequestsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly deliveryPlansService: DeliveryPlansService,
+  ) {}
 
   async create(pointId: number, dto: CreateDeliveryRequestDto): Promise<DeliveryRequestResponseDto> {
     await Promise.all([this.validatePointExists(pointId), this.validateProductExists(dto.productId)]);
@@ -21,6 +27,8 @@ export class DeliveryRequestsService {
       },
       include: { products: true },
     });
+
+    this.deliveryPlansService.recalculateAll().catch((err) => this.logger.error('Failed to recalculate delivery plans', err));
 
     return toDeliveryRequest(request);
   }
@@ -51,6 +59,8 @@ export class DeliveryRequestsService {
       include: { products: true },
     });
 
+    this.deliveryPlansService.recalculateAll().catch((err) => this.logger.error('Failed to recalculate delivery plans', err));
+
     return toDeliveryRequest(updated);
   }
 
@@ -65,6 +75,8 @@ export class DeliveryRequestsService {
     await this.prisma.delivery_requests.delete({
       where: { id: requestId },
     });
+
+    this.deliveryPlansService.recalculateAll().catch((err) => this.logger.error('Failed to recalculate delivery plans', err));
   }
 
   private async validatePointExists(pointId: number): Promise<void> {

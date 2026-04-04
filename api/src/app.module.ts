@@ -6,6 +6,7 @@ import config from 'config';
 import type { Request } from 'express';
 import { AuthModule } from './auth/auth.module';
 import { getSessionIdentifier } from './common/helpers/session-identifier';
+import { DeliveryPlansModule } from './delivery-plans/delivery-plans.module';
 import { DeliveryRequestsModule } from './delivery-requests/delivery-requests.module';
 import { GeoModule } from './geo/geo.module';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
@@ -44,6 +45,7 @@ import { WarehousesModule } from './warehouses/warehouses.module';
     ProductsModule,
     PointsModule,
     DeliveryRequestsModule,
+    DeliveryPlansModule,
     GeoModule,
     WarehousesModule,
   ],
