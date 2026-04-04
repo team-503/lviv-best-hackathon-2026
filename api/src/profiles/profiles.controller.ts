@@ -1,0 +1,31 @@
+import { Controller, Get } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import type { RequestUser } from '../auth/auth.types';
+import { Auth } from '../auth/decorators/auth.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthLevel } from '../common/enums/auth-level.enum';
+import { ProfileResponseDto } from './dto/response/profile.response.dto';
+import { UserResponseDto } from './dto/response/user.response.dto';
+import { ProfilesService } from './profiles.service';
+
+@ApiTags('profiles')
+@Controller('profiles')
+@Auth()
+export class ProfilesController {
+  constructor(private readonly profileService: ProfilesService) {}
+
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'Current user profile', type: ProfileResponseDto })
+  getProfile(@CurrentUser() user: RequestUser): Promise<ProfileResponseDto> {
+    return this.profileService.getProfile(user.id);
+  }
+
+  @Get('users')
+  @Auth(AuthLevel.Admin)
+  @ApiOperation({ summary: 'List all users (admin)' })
+  @ApiResponse({ status: 200, description: 'All user profiles', type: [UserResponseDto] })
+  getAllUsers(): Promise<UserResponseDto[]> {
+    return this.profileService.getAllUsers();
+  }
+}
