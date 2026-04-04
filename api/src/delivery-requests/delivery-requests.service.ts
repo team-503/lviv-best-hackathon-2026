@@ -10,8 +10,7 @@ export class DeliveryRequestsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(pointId: number, dto: CreateDeliveryRequestDto): Promise<DeliveryRequestResponseDto> {
-    await this.validatePointExists(pointId);
-    await this.validateProductExists(dto.productId);
+    await Promise.all([this.validatePointExists(pointId), this.validateProductExists(dto.productId)]);
 
     const request = await this.prisma.delivery_requests.create({
       data: {
@@ -31,8 +30,6 @@ export class DeliveryRequestsService {
       throw new BadRequestException('At least one field (productId, quantity or criticality) must be provided');
     }
 
-    await this.validatePointExists(pointId);
-
     if (dto.productId) {
       await this.validateProductExists(dto.productId);
     }
@@ -40,7 +37,6 @@ export class DeliveryRequestsService {
     const existing = await this.prisma.delivery_requests.findFirst({
       where: { id: requestId, point_id: pointId },
     });
-
     if (!existing) {
       throw new NotFoundException('Delivery request not found');
     }
@@ -59,12 +55,9 @@ export class DeliveryRequestsService {
   }
 
   async remove(pointId: number, requestId: number): Promise<void> {
-    await this.validatePointExists(pointId);
-
     const existing = await this.prisma.delivery_requests.findFirst({
       where: { id: requestId, point_id: pointId },
     });
-
     if (!existing) {
       throw new NotFoundException('Delivery request not found');
     }
@@ -75,11 +68,11 @@ export class DeliveryRequestsService {
   }
 
   private async validatePointExists(pointId: number): Promise<void> {
-    const count = await this.prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*)::bigint AS count FROM points WHERE id = ${pointId}
-    `;
-
-    if (count[0].count === BigInt(0)) {
+    const point = await this.prisma.points.findUnique({
+      where: { id: pointId },
+      select: { id: true },
+    });
+    if (!point) {
       throw new NotFoundException('Point not found');
     }
   }
@@ -87,8 +80,8 @@ export class DeliveryRequestsService {
   private async validateProductExists(productId: number): Promise<void> {
     const product = await this.prisma.products.findUnique({
       where: { id: productId },
+      select: { id: true },
     });
-
     if (!product) {
       throw new NotFoundException('Product not found');
     }

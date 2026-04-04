@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { StockUpdatedResponseDto } from '../common/dto/response/stock-updated.response.dto';
+import { RequestStatus } from '../common/enums/request-status.enum';
 import { toDeliveryRequest } from '../delivery-requests/delivery-requests.helper';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePointDto } from './dto/request/create-point.dto';
@@ -127,7 +128,7 @@ export class PointsService {
         include: { products: true },
       }),
       client.delivery_requests.findMany({
-        where: { point_id: id, status: 'active' },
+        where: { point_id: id, status: RequestStatus.Active },
         include: { products: true },
         orderBy: { created_at: 'desc' },
       }),
