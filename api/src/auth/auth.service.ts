@@ -11,7 +11,6 @@ export class AuthService {
       const payload = jwt.verify(token, process.env.SUPABASE_JWT_SECRET as string, {
         algorithms: ['HS256'],
       });
-
       if (typeof payload === 'string') {
         throw new UnauthorizedException('Invalid token payload');
       }

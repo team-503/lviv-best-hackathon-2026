@@ -5,9 +5,9 @@ import config from 'config';
 import cookieParser from 'cookie-parser';
 import { doubleCsrf } from 'csrf-csrf';
 import helmet from 'helmet';
-import { DatabaseExceptionFilter } from './common/exception-filters/database-exception.filter';
 import { getSessionIdentifier } from './common/helpers/session-identifier';
 import { sessionIdCookieMiddleware } from './common/middlewares/session-id-cookie.middleware';
+import { PrismaExceptionFilter } from './prisma/exception-filters/prisma-exception.filter';
 
 export function setupApp(app: NestExpressApplication): NestExpressApplication {
   app.use(helmet());
@@ -41,7 +41,7 @@ export function setupApp(app: NestExpressApplication): NestExpressApplication {
       forbidNonWhitelisted: true,
     }),
   );
-  app.useGlobalFilters(new DatabaseExceptionFilter());
+  app.useGlobalFilters(new PrismaExceptionFilter());
 
   const swaggerConfig = new DocumentBuilder().setTitle('API').setVersion('1.0').addBearerAuth().build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);

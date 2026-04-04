@@ -3,16 +3,18 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import config from 'config';
+import type { Request } from 'express';
 import { AuthModule } from './auth/auth.module';
 import { getSessionIdentifier } from './common/helpers/session-identifier';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProfilesModule } from './profiles/profiles.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot({
-      getTracker: getSessionIdentifier,
+      getTracker: (req) => getSessionIdentifier(req as unknown as Request),
       throttlers: [
         {
           name: 'short',
@@ -31,6 +33,7 @@ import { PrismaModule } from './prisma/prisma.module';
     HealthcheckModule,
     PrismaModule,
     AuthModule,
+    ProfilesModule,
   ],
   providers: [
     {
