@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type location_type, type stop_action } from '@prisma/client';
 import { LocationType } from '../common/enums/location-type.enum';
+import { PlanStatus } from '../common/enums/plan-status.enum';
 import { PlanType } from '../common/enums/plan-type.enum';
+import { RequestStatus } from '../common/enums/request-status.enum';
 import { StopAction } from '../common/enums/stop-action.enum';
 import { GeoService } from '../geo/geo.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -36,15 +38,12 @@ export class DeliveryPlansService {
       this.findLatestPlanByType(PlanType.Standard),
     ]);
 
-    return {
-      urgent: urgentPlan,
-      standard: standardPlan,
-    };
+    return { urgent: urgentPlan, standard: standardPlan };
   }
 
   async findHistory(): Promise<PlanListItemResponseDto[]> {
     const plans = await this.prisma.delivery_plans.findMany({
-      where: { status: 'completed' },
+      where: { status: PlanStatus.Completed },
       orderBy: { created_at: 'desc' },
     });
 
@@ -57,16 +56,13 @@ export class DeliveryPlansService {
   }
 
   async findOne(id: number): Promise<PlanWithRoutesResponseDto> {
-    const plan = await this.prisma.delivery_plans.findUnique({
-      where: { id },
-    });
+    const plan = await this.prisma.delivery_plans.findUnique({ where: { id } });
 
     if (!plan) {
       throw new NotFoundException('Delivery plan not found');
     }
 
     const rows = await this.fetchPlanRouteStops(plan.id);
-
     return toPlanWithRoutes({ id: plan.id, type: plan.type, status: plan.status, created_at: plan.created_at }, rows);
   }
 
@@ -77,49 +73,42 @@ export class DeliveryPlansService {
   async recalculate(planType: PlanType): Promise<void> {
     const criticalities = planType === PlanType.Urgent ? URGENT_CRITICALITIES : STANDARD_CRITICALITIES;
 
-    // Step 1: Collect and sort requests
     const rawRequests = await this.fetchActiveRequests(criticalities);
     if (rawRequests.length === 0) {
-      await this.saveEmptyPlan(planType);
+      await this.savePlan(planType, []);
       return;
     }
 
-    const enrichedRequests: SortedRequest[] = rawRequests.map((r) => ({
-      requestId: r.id,
-      pointId: r.point_id,
-      pointName: r.point_name,
-      pointLat: Number(r.lat),
-      pointLng: Number(r.lng),
-      productId: r.product_id,
-      productName: r.product_name,
-      quantity: r.quantity,
-      criticality: r.criticality,
-      criticalityWeight: CRITICALITY_WEIGHT[r.criticality] ?? 0,
-    }));
+    const sorted = sortRequests(
+      rawRequests.map((r) => ({
+        requestId: r.id,
+        pointId: r.point_id,
+        pointName: r.point_name,
+        pointLat: Number(r.lat),
+        pointLng: Number(r.lng),
+        productId: r.product_id,
+        productName: r.product_name,
+        quantity: r.quantity,
+        criticality: r.criticality,
+        criticalityWeight: CRITICALITY_WEIGHT[r.criticality] ?? 0,
+      })),
+    );
 
-    const sorted = sortRequests(enrichedRequests);
-
-    // Step 2: Find sources for each request
     const sources = await this.findSourcesForRequests(sorted);
 
-    // Step 3: Load warehouse locations and assign to vehicles
     const warehouses = await this.fetchWarehouseLocations();
     if (warehouses.length === 0) {
-      await this.saveEmptyPlan(planType);
+      await this.savePlan(planType, []);
       return;
     }
 
     const vehicles = assignRequestsToVehicles(sorted, sources, VEHICLE_COUNT, VEHICLE_CAPACITY, warehouses);
 
-    // Step 4: Optimize route order
     for (const vehicle of vehicles) {
       vehicle.stops = optimizeRouteOrder(vehicle);
     }
 
-    // Step 5: Verify no deficit from point pickups
     await this.resolveDeficits(vehicles);
-
-    // Step 6: Write to DB
     await this.savePlan(planType, vehicles);
   }
 
@@ -138,7 +127,7 @@ export class DeliveryPlansService {
       FROM delivery_requests dr
       JOIN points pt ON pt.id = dr.point_id
       JOIN products p ON p.id = dr.product_id
-      WHERE dr.status = 'active'
+      WHERE dr.status = ${RequestStatus.Active}
         AND dr.criticality::text IN (${Prisma.join(criticalities)})
     `;
   }
@@ -146,15 +135,20 @@ export class DeliveryPlansService {
   private async findSourcesForRequests(requests: SortedRequest[]): Promise<Map<number, SourceMatch>> {
     const sources = new Map<number, SourceMatch>();
 
-    for (const request of requests) {
-      // Priority: warehouses first
-      const warehouses = await this.geoService.findNearestWarehousesWithProduct(
-        request.pointLat,
-        request.pointLng,
-        request.productId,
-        1,
-      );
+    // Batch warehouse lookups by productId to avoid N+1
+    const productIds = [...new Set(requests.map((r) => r.productId))];
+    const warehousesByProduct = new Map<number, Awaited<ReturnType<GeoService['findNearestWarehousesWithProduct']>>>();
 
+    await Promise.all(
+      productIds.map(async (productId) => {
+        const nearest = requests.find((r) => r.productId === productId)!;
+        const result = await this.geoService.findNearestWarehousesWithProduct(nearest.pointLat, nearest.pointLng, productId, 50);
+        warehousesByProduct.set(productId, result);
+      }),
+    );
+
+    for (const request of requests) {
+      const warehouses = warehousesByProduct.get(request.productId) ?? [];
       if (warehouses.length > 0) {
         const w = warehouses[0];
         sources.set(request.requestId, {
@@ -168,7 +162,6 @@ export class DeliveryPlansService {
         continue;
       }
 
-      // Fallback: points with surplus
       const points = await this.geoService.findNearestPointsWithSurplus(
         request.pointLat,
         request.pointLng,
@@ -178,7 +171,6 @@ export class DeliveryPlansService {
       );
 
       if (points.length > 0) {
-        // Pick the point with the largest surplus (minimize deficit risk)
         const bestPoint = points.reduce((best, p) => (p.surplus > best.surplus ? p : best), points[0]);
         sources.set(request.requestId, {
           locationType: LocationType.Point,
@@ -231,8 +223,24 @@ export class DeliveryPlansService {
     }
 
     const deficits = checkDeficits(vehicles, stockMap);
+    if (deficits.length === 0) return;
+
+    // Batch warehouse lookups for all deficit product IDs
+    const deficitProductIds = [...new Set(deficits.map((d) => d.productId))];
+    const warehouseCache = new Map<number, Awaited<ReturnType<GeoService['findNearestWarehousesWithProduct']>>>();
+
+    await Promise.all(
+      deficitProductIds.map(async (productId) => {
+        const result = await this.geoService.findNearestWarehousesWithProduct(0, 0, productId, 50);
+        warehouseCache.set(productId, result);
+      }),
+    );
 
     for (const deficit of deficits) {
+      const warehouses = warehouseCache.get(deficit.productId) ?? [];
+      if (warehouses.length === 0) continue;
+
+      const w = warehouses[0];
       for (const v of vehicles) {
         for (let i = 0; i < v.stops.length; i++) {
           const stop = v.stops[i];
@@ -242,19 +250,14 @@ export class DeliveryPlansService {
             stop.pointId === deficit.pointId &&
             stop.productId === deficit.productId
           ) {
-            const wh = await this.geoService.findNearestWarehousesWithProduct(stop.lat, stop.lng, stop.productId, 1);
-
-            if (wh.length > 0) {
-              const w = wh[0];
-              v.stops[i] = {
-                ...stop,
-                locationType: LocationType.Warehouse,
-                warehouseId: w.id,
-                pointId: null,
-                lat: w.location.lat,
-                lng: w.location.lng,
-              };
-            }
+            v.stops[i] = {
+              ...stop,
+              locationType: LocationType.Warehouse,
+              warehouseId: w.id,
+              pointId: null,
+              lat: w.location.lat,
+              lng: w.location.lng,
+            };
           }
         }
       }
@@ -266,7 +269,7 @@ export class DeliveryPlansService {
       await this.deleteOldDraftPlans(tx, planType);
 
       const plan = await tx.delivery_plans.create({
-        data: { type: planType, status: 'draft' },
+        data: { type: planType, status: PlanStatus.Draft },
       });
 
       for (const vehicle of vehicles) {
@@ -293,22 +296,12 @@ export class DeliveryPlansService {
     });
   }
 
-  private async saveEmptyPlan(planType: PlanType): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      await this.deleteOldDraftPlans(tx, planType);
-
-      await tx.delivery_plans.create({
-        data: { type: planType, status: 'draft' },
-      });
-    });
-  }
-
   private async deleteOldDraftPlans(
     tx: Parameters<Parameters<PrismaService['$transaction']>[0]>[0],
     planType: PlanType,
   ): Promise<void> {
     const oldPlans = await tx.delivery_plans.findMany({
-      where: { type: planType, status: 'draft' },
+      where: { type: planType, status: PlanStatus.Draft },
       select: { id: true },
     });
 
@@ -330,7 +323,7 @@ export class DeliveryPlansService {
     const plan = await this.prisma.delivery_plans.findFirst({
       where: {
         type: planType,
-        status: { in: ['draft', 'executing'] },
+        status: { in: [PlanStatus.Draft, PlanStatus.Executing] },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -338,7 +331,6 @@ export class DeliveryPlansService {
     if (!plan) return null;
 
     const rows = await this.fetchPlanRouteStops(plan.id);
-
     return toPlanWithRoutes({ id: plan.id, type: plan.type, status: plan.status, created_at: plan.created_at }, rows);
   }
 

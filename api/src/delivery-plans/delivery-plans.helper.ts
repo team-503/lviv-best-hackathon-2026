@@ -4,6 +4,7 @@ import { EARTH_RADIUS_M } from './constants';
 import type { PlanWithRoutesResponseDto } from './dto/response/plan-with-routes.response.dto';
 import type { RouteStopResponseDto } from './dto/response/route-stop.response.dto';
 import type { RouteResponseDto } from './dto/response/route.response.dto';
+import type { DeficitInfo } from './types/deficit-info.type';
 import type { PlanRouteStopRow } from './types/plan-route-stop-row.type';
 import type { PlanStop } from './types/plan-stop.type';
 import type { SortedRequest } from './types/sorted-request.type';
@@ -203,11 +204,6 @@ export function optimizeRouteOrder(vehicle: VehicleState): PlanStop[] {
   }
 
   return result;
-}
-
-export interface DeficitInfo {
-  pointId: number;
-  productId: number;
 }
 
 export function checkDeficits(
