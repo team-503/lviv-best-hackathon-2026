@@ -1,11 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { RequestUser } from '../auth/auth.types';
-import { CurrentUser, Roles } from '../auth/decorators';
+import { Auth, AuthLevel, CurrentUser } from '../auth/decorators';
 import { ProfilesService } from './profiles.service';
 
 @ApiTags('profiles')
 @Controller('profiles')
+@Auth()
 export class ProfilesController {
   constructor(private readonly profileService: ProfilesService) {}
 
@@ -16,7 +17,7 @@ export class ProfilesController {
   }
 
   @Get('users')
-  @Roles('admin')
+  @Auth(AuthLevel.Admin)
   @ApiOperation({ summary: 'List all users' })
   getAllUsers() {
     return this.profileService.getAllUsers();
