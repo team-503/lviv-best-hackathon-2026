@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { DeliveryPlansService } from '../delivery-plans/delivery-plans.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { toDeliveryRequest } from './delivery-requests.helper';
 import type { CreateDeliveryRequestDto } from './dto/request/create-delivery-request.dto';
@@ -7,7 +8,10 @@ import type { DeliveryRequestResponseDto } from './dto/response/delivery-request
 
 @Injectable()
 export class DeliveryRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly deliveryPlansService: DeliveryPlansService,
+  ) {}
 
   async create(pointId: number, dto: CreateDeliveryRequestDto): Promise<DeliveryRequestResponseDto> {
     await Promise.all([this.validatePointExists(pointId), this.validateProductExists(dto.productId)]);
@@ -21,6 +25,8 @@ export class DeliveryRequestsService {
       },
       include: { products: true },
     });
+
+    void this.deliveryPlansService.recalculateAll();
 
     return toDeliveryRequest(request);
   }
@@ -51,6 +57,8 @@ export class DeliveryRequestsService {
       include: { products: true },
     });
 
+    void this.deliveryPlansService.recalculateAll();
+
     return toDeliveryRequest(updated);
   }
 
@@ -65,6 +73,8 @@ export class DeliveryRequestsService {
     await this.prisma.delivery_requests.delete({
       where: { id: requestId },
     });
+
+    void this.deliveryPlansService.recalculateAll();
   }
 
   private async validatePointExists(pointId: number): Promise<void> {
