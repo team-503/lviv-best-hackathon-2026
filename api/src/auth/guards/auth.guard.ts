@@ -50,7 +50,7 @@ export class AuthGuard implements CanActivate {
 
     const permissions = await this.authService.getUserPermissions(request.user.id);
     const resourceId = request.params.id;
-    const entry = permissions.find((p) => p.resource_type === meta.resourceType && String(p.resource_id) === resourceId);
+    const entry = permissions.find((p) => p.resource_type === meta.resource && String(p.resource_id) === resourceId);
     if (!entry || !entry.permissions.includes(meta.level)) {
       throw new ForbiddenException('[Auth] Insufficient permissions for this resource');
     }

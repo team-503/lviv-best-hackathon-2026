@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import type { ProfileResponseDto } from './dto/response/profile.response.dto';
+import type { UserResponseDto } from './dto/response/user.response.dto';
 
 @Injectable()
 export class ProfilesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getProfile(userId: string) {
+  async getProfile(userId: string): Promise<ProfileResponseDto> {
     const profile = await this.prisma.profiles.findUnique({
       where: { id: userId },
     });
@@ -23,7 +25,7 @@ export class ProfilesService {
     };
   }
 
-  async getAllUsers() {
+  async getAllUsers(): Promise<UserResponseDto[]> {
     const profiles = await this.prisma.profiles.findMany({
       select: { id: true, email: true, display_name: true, role: true },
     });

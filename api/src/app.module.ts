@@ -10,6 +10,7 @@ import { HealthcheckModule } from './healthcheck/healthcheck.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
 import { ProfilesModule } from './profiles/profiles.module';
+import { WarehousesModule } from './warehouses/warehouses.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ProfilesModule } from './profiles/profiles.module';
     AuthModule,
     ProfilesModule,
     ProductsModule,
+    WarehousesModule,
   ],
   providers: [
     {
