@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import config from 'config';
+import { AuthModule } from './auth/auth.module';
 import { getSessionIdentifier } from './common/helpers/session-identifier';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -29,6 +30,7 @@ import { PrismaModule } from './prisma/prisma.module';
     }),
     HealthcheckModule,
     PrismaModule,
+    AuthModule,
   ],
   providers: [
     {
