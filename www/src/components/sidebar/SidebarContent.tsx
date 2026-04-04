@@ -4,11 +4,24 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CriticalityBadge } from '@/components/ui/criticality-badge';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { getProductById, type MapPoint, type CriticalityLevel } from '@/data/mockData';
-import { MapPin, Warehouse, Package, Route, AlertTriangle, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
+import { MapPin, Warehouse, Package, Route, AlertTriangle, CheckCircle2, Clock, ExternalLink, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleRoute, setAllRoutes, clearRoutes } from '@/store/slices/uiSlice';
+import { removePoint } from '@/store/slices/mapPointsSlice';
+import { removeRequest } from '@/store/slices/requestsSlice';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 
 // ─── Points List ───
@@ -16,20 +29,36 @@ function PointCard({
   point,
   onSelect,
   onOpen,
+  onHover,
+  onHoverEnd,
 }: {
   point: MapPoint;
   onSelect: () => void;
   onOpen: () => void;
+  onHover?: () => void;
+  onHoverEnd?: () => void;
 }) {
-  const requests = useAppSelector((s) =>
-    s.requests.requests.filter((r) => point.activeRequests.includes(r.id)),
+  const dispatch = useAppDispatch();
+  const isAdmin = useAppSelector((s) => s.auth.user?.role === 'admin');
+  const pointRequests = useAppSelector((s) =>
+    s.requests.requests.filter((r) => r.pointId === point.id),
   );
+  const requests = pointRequests.filter((r) => point.activeRequests.includes(r.id));
   const urgentCount = requests.filter((r) => r.criticality === 'urgent').length;
   const criticalCount = requests.filter((r) => r.criticality === 'critical').length;
   const isWarehouse = point.type === 'warehouse';
 
+  function handleDelete() {
+    pointRequests.forEach((r) => dispatch(removeRequest(r.id)));
+    dispatch(removePoint(point.id));
+  }
+
   return (
-    <div className="rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+    <div
+      className="rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+      onMouseEnter={onHover}
+      onMouseLeave={onHoverEnd}
+    >
       <button
         className="w-full text-left p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
         onClick={onSelect}
@@ -69,7 +98,7 @@ function PointCard({
         )}
       </button>
 
-      <div className="px-3 pb-2 -mt-1">
+      <div className="px-3 pb-2 -mt-1 flex items-center gap-1">
         <Button
           variant="ghost"
           size="sm"
@@ -79,6 +108,41 @@ function PointCard({
           <ExternalLink className="size-3" data-icon="inline-start" />
           Відкрити
         </Button>
+
+        {isAdmin && (
+          <AlertDialog>
+            <AlertDialogTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs text-muted-foreground hover:text-destructive px-2 ml-auto"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              }
+            >
+              <Trash2 className="size-3" />
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Видалити {isWarehouse ? 'склад' : 'точку доставки'}?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  <span className="font-medium text-foreground">{point.name}</span> буде видалено
+                  разом з усіма пов'язаними запитами на доставку
+                  {requests.length > 0 && ` (${requests.length} шт.)`}. Цю дію неможливо скасувати.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Скасувати</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete}>
+                  Видалити
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </div>
   );
@@ -87,9 +151,11 @@ function PointCard({
 function PointsTab({
   onSelectPoint,
   onOpenPoint,
+  onHoverPoint,
 }: {
   onSelectPoint: (id: string) => void;
   onOpenPoint: (id: string, type: 'warehouse' | 'delivery') => void;
+  onHoverPoint?: (id: string | null) => void;
 }) {
   const points = useAppSelector((s) => s.mapPoints.points);
   const warehouses = points.filter((p) => p.type === 'warehouse');
@@ -111,6 +177,8 @@ function PointsTab({
               point={p}
               onSelect={() => onSelectPoint(p.id)}
               onOpen={() => onOpenPoint(p.id, 'warehouse')}
+              onHover={() => onHoverPoint?.(p.id)}
+              onHoverEnd={() => onHoverPoint?.(null)}
             />
           ))}
         </div>
@@ -132,6 +200,8 @@ function PointsTab({
               point={p}
               onSelect={() => onSelectPoint(p.id)}
               onOpen={() => onOpenPoint(p.id, 'delivery')}
+              onHover={() => onHoverPoint?.(p.id)}
+              onHoverEnd={() => onHoverPoint?.(null)}
             />
           ))}
         </div>
@@ -319,9 +389,10 @@ function PlanTab() {
 interface SidebarContentProps {
   onSelectPoint: (id: string) => void;
   onOpenPoint: (id: string, type: 'warehouse' | 'delivery') => void;
+  onHoverPoint?: (id: string | null) => void;
 }
 
-export function SidebarContent({ onSelectPoint, onOpenPoint }: SidebarContentProps) {
+export function SidebarContent({ onSelectPoint, onOpenPoint, onHoverPoint }: SidebarContentProps) {
   const points = useAppSelector((s) => s.mapPoints.points);
   const requests = useAppSelector((s) => s.requests.requests);
   const urgentCount = requests.filter(
@@ -374,7 +445,11 @@ export function SidebarContent({ onSelectPoint, onOpenPoint }: SidebarContentPro
         <TabsContent value="points" className="flex-1 min-h-0 mt-0">
           <ScrollArea className="h-full">
             <div className="p-3">
-              <PointsTab onSelectPoint={onSelectPoint} onOpenPoint={onOpenPoint} />
+              <PointsTab
+                onSelectPoint={onSelectPoint}
+                onOpenPoint={onOpenPoint}
+                onHoverPoint={onHoverPoint}
+              />
             </div>
           </ScrollArea>
         </TabsContent>

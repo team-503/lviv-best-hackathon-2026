@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -27,26 +27,35 @@ function getVehicleColor(vehicleId: string, vehicles: { id: string }[]): string 
 }
 
 // ─── Icons ───
-function createPointIcon(type: 'warehouse' | 'delivery', hasUrgent: boolean) {
+function createPointIcon(type: 'warehouse' | 'delivery', hasUrgent: boolean, isHovered = false) {
   const warehouseColor = '#6366f1';
   const deliveryColor = '#2563eb';
+  const color = type === 'warehouse' ? warehouseColor : deliveryColor;
+
+  const wrapStyle = isHovered
+    ? `style="transform:scale(1.25);transform-origin:50% 100%;filter:drop-shadow(0 0 6px ${color}cc) drop-shadow(0 0 12px ${color}66);"`
+    : '';
 
   const svgWarehouse = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40" width="32" height="40">
-      <path d="M16 0C9.4 0 4 5.4 4 12c0 9 12 28 12 28s12-19 12-28C28 5.4 22.6 0 16 0z"
-        fill="${warehouseColor}" ${hasUrgent ? `stroke="#ef4444" stroke-width="2"` : ''}/>
-      <rect x="10" y="10" width="12" height="10" rx="1" fill="white" opacity="0.9"/>
-      <rect x="10" y="10" width="12" height="3" rx="1" fill="white"/>
-      <rect x="14" y="16" width="4" height="4" rx="0.5" fill="${warehouseColor}"/>
-    </svg>`;
+    <div ${wrapStyle}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40" width="32" height="40">
+        <path d="M16 0C9.4 0 4 5.4 4 12c0 9 12 28 12 28s12-19 12-28C28 5.4 22.6 0 16 0z"
+          fill="${warehouseColor}" ${hasUrgent ? `stroke="#ef4444" stroke-width="2"` : ''}/>
+        <rect x="10" y="10" width="12" height="10" rx="1" fill="white" opacity="0.9"/>
+        <rect x="10" y="10" width="12" height="3" rx="1" fill="white"/>
+        <rect x="14" y="16" width="4" height="4" rx="0.5" fill="${warehouseColor}"/>
+      </svg>
+    </div>`;
 
   const svgDelivery = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40" width="32" height="40">
-      <path d="M16 0C9.4 0 4 5.4 4 12c0 9 12 28 12 28s12-19 12-28C28 5.4 22.6 0 16 0z"
-        fill="${deliveryColor}" ${hasUrgent ? `stroke="#ef4444" stroke-width="2"` : ''}/>
-      <circle cx="16" cy="13" r="5" fill="white" opacity="0.9"/>
-      <circle cx="16" cy="13" r="3" fill="${deliveryColor}"/>
-    </svg>`;
+    <div ${wrapStyle}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40" width="32" height="40">
+        <path d="M16 0C9.4 0 4 5.4 4 12c0 9 12 28 12 28s12-19 12-28C28 5.4 22.6 0 16 0z"
+          fill="${deliveryColor}" ${hasUrgent ? `stroke="#ef4444" stroke-width="2"` : ''}/>
+        <circle cx="16" cy="13" r="5" fill="white" opacity="0.9"/>
+        <circle cx="16" cy="13" r="3" fill="${deliveryColor}"/>
+      </svg>
+    </div>`;
 
   return L.divIcon({
     html: type === 'warehouse' ? svgWarehouse : svgDelivery,
@@ -154,6 +163,37 @@ function MapResizer() {
   return null;
 }
 
+// ─── Fly-to + open popup on sidebar click ───
+function MapController({
+  flyToTrigger,
+  points,
+  markerRefs,
+}: {
+  flyToTrigger: { id: string; key: number } | null;
+  points: MapPoint[];
+  markerRefs: React.MutableRefObject<Record<string, L.Marker>>;
+}) {
+  const map = useMap();
+  const prevKey = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!flyToTrigger || flyToTrigger.key === prevKey.current) return;
+    prevKey.current = flyToTrigger.key;
+
+    const point = points.find((p) => p.id === flyToTrigger.id);
+    if (!point) return;
+
+    const targetZoom = Math.max(map.getZoom(), 15);
+    map.flyTo([point.lat, point.lng], targetZoom, { duration: 0.6 });
+
+    setTimeout(() => {
+      markerRefs.current[flyToTrigger.id]?.openPopup();
+    }, 750);
+  }, [flyToTrigger, map, points, markerRefs]);
+
+  return null;
+}
+
 function buildRoutePolyline(route: SimRoute, points: MapPoint[]): [number, number][] {
   const wh = points.find((p) => p.id === route.warehouseId);
   const coords: [number, number][] = [];
@@ -172,6 +212,8 @@ interface MapViewProps {
   onSelectPoint: (id: string | null) => void;
   activeRouteIds: string[];
   simulationRoutes?: SimRoute[];
+  hoveredPointId?: string | null;
+  flyToTrigger?: { id: string; key: number } | null;
 }
 
 export function MapView({
@@ -179,8 +221,11 @@ export function MapView({
   onSelectPoint,
   activeRouteIds,
   simulationRoutes = [],
+  hoveredPointId = null,
+  flyToTrigger = null,
 }: MapViewProps) {
   const center: [number, number] = [49.835, 24.02];
+  const markerRefs = useRef<Record<string, L.Marker>>({});
   const points = useAppSelector((s) => s.mapPoints.points);
   const requests = useAppSelector((s) => s.requests.requests);
   const { vehicles, plan } = useAppSelector((s) => s.plan);
@@ -219,6 +264,7 @@ export function MapView({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapResizer />
+      <MapController flyToTrigger={flyToTrigger} points={points} markerRefs={markerRefs} />
 
       {/* ── Simulation: all routes ── */}
       {isSimulating && simulationRoutes.map((route) => {
@@ -265,11 +311,16 @@ export function MapView({
       {points.map((point) => {
         const pointReqs = requests.filter((r) => point.activeRequests.includes(r.id));
         const hasUrgent = pointReqs.some((r) => r.criticality === 'urgent' || r.criticality === 'critical');
+        const isHovered = hoveredPointId === point.id;
         return (
           <Marker
             key={point.id}
             position={[point.lat, point.lng]}
-            icon={createPointIcon(point.type, hasUrgent)}
+            icon={createPointIcon(point.type, hasUrgent, isHovered)}
+            ref={(m: L.Marker | null) => {
+              if (m) markerRefs.current[point.id] = m;
+              else delete markerRefs.current[point.id];
+            }}
             eventHandlers={{ click: () => onSelectPoint(selectedPointId === point.id ? null : point.id) }}
           >
             <Popup><PointPopup point={point} /></Popup>

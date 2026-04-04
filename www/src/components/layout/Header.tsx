@@ -1,10 +1,11 @@
-import { Moon, Sun, Truck, Menu, User, Play, SkipForward, CheckCheck, CalendarDays, LogOut } from 'lucide-react';
+import { Moon, Sun, Truck, Menu, User, Play, SkipForward, CheckCheck, CalendarDays, LogOut, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleTheme, setMobileSidebarOpen } from '@/store/slices/uiSlice';
 import { logout } from '@/store/slices/authSlice';
 import { supabase } from '@/lib/supabase';
 import { useSimulation } from '@/hooks/useSimulation';
+import { useNavigate } from 'react-router-dom';
 import type { SimStatus } from '@/store/slices/simulationSlice';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +41,7 @@ interface HeaderProps {
 
 export function Header({ showSimulation = false }: HeaderProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const theme = useAppSelector((s) => s.ui.theme);
   const user = useAppSelector((s) => s.auth.user);
   const { status, day, runSimulation } = useSimulation();
@@ -67,8 +69,8 @@ export function Header({ showSimulation = false }: HeaderProps) {
         </div>
       </div>
 
-      {/* Center — simulation button (only on map page) */}
-      {showSimulation && (
+      {/* Center — simulation button (admin only) */}
+      {showSimulation && user?.role === 'admin' && (
         <Button
           onClick={runSimulation}
           variant={simBtn.variant}
@@ -82,6 +84,17 @@ export function Header({ showSimulation = false }: HeaderProps) {
 
       {/* Right */}
       <div className="flex items-center gap-2">
+        {user?.role === 'admin' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/admin/permissions')}
+            aria-label="Управління доступами"
+            title="Управління доступами"
+          >
+            <Users className="size-4" />
+          </Button>
+        )}
         <Button variant="ghost" size="icon" onClick={() => dispatch(toggleTheme())} aria-label="Змінити тему">
           {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
