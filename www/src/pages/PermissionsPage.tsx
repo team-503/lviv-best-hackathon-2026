@@ -1,27 +1,27 @@
 import { useState, useCallback } from 'react';
-import {
-  Users,
-  Warehouse,
-  MapPin,
-  ShieldCheck,
-  User,
-  ChevronRight,
-} from 'lucide-react';
+import { Users, Warehouse, MapPin, ShieldCheck, User, ChevronRight } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/lib/utils';
-import { getLevel, levelToArray, type Profile, type UserPermission, type PermissionLevel, type ResourceType } from '@/lib/permissions';
+import {
+  getLevel,
+  levelToArray,
+  type Profile,
+  type UserPermission,
+  type PermissionLevel,
+  type ResourceType,
+} from '@/lib/permissions';
 
 // ─── Mock data ───
 const MOCK_PROFILES: Profile[] = [
-  { id: 'u2', email: 'warehouse1@logiflow.ua', display_name: 'Іван Мельник',    role: 'user' },
-  { id: 'u3', email: 'warehouse2@logiflow.ua', display_name: 'Олена Бондар',    role: 'user' },
-  { id: 'u4', email: 'delivery1@logiflow.ua',  display_name: 'Петро Савченко',  role: 'user' },
-  { id: 'u5', email: 'delivery2@logiflow.ua',  display_name: 'Марія Коваленко', role: 'user' },
-  { id: 'u6', email: 'delivery3@logiflow.ua',  display_name: 'Дмитро Поліщук', role: 'user' },
+  { id: 'u2', email: 'warehouse1@logiflow.ua', display_name: 'Іван Мельник', role: 'user' },
+  { id: 'u3', email: 'warehouse2@logiflow.ua', display_name: 'Олена Бондар', role: 'user' },
+  { id: 'u4', email: 'delivery1@logiflow.ua', display_name: 'Петро Савченко', role: 'user' },
+  { id: 'u5', email: 'delivery2@logiflow.ua', display_name: 'Марія Коваленко', role: 'user' },
+  { id: 'u6', email: 'delivery3@logiflow.ua', display_name: 'Дмитро Поліщук', role: 'user' },
 ];
 
 const MOCK_PERMISSIONS: Record<string, UserPermission[]> = {
@@ -29,9 +29,7 @@ const MOCK_PERMISSIONS: Record<string, UserPermission[]> = {
     { id: 1, user_id: 'u2', resource_type: 'warehouse', resource_id: 'w1', permissions: ['read', 'write'] },
     { id: 2, user_id: 'u2', resource_type: 'warehouse', resource_id: 'w2', permissions: ['read'] },
   ],
-  u3: [
-    { id: 3, user_id: 'u3', resource_type: 'warehouse', resource_id: 'w2', permissions: ['read', 'write'] },
-  ],
+  u3: [{ id: 3, user_id: 'u3', resource_type: 'warehouse', resource_id: 'w2', permissions: ['read', 'write'] }],
   u4: [
     { id: 4, user_id: 'u4', resource_type: 'point', resource_id: 'd1', permissions: ['read', 'write'] },
     { id: 5, user_id: 'u4', resource_type: 'point', resource_id: 'd2', permissions: ['read'] },
@@ -94,7 +92,6 @@ function ResourceRow({
   address,
   type,
   resourceId,
-  userId,
   perm,
   onChanged,
 }: {
@@ -102,7 +99,6 @@ function ResourceRow({
   address: string;
   type: ResourceType;
   resourceId: string;
-  userId: string;
   perm: UserPermission | undefined;
   onChanged: (resourceType: ResourceType, resourceId: string, newPerms: string[]) => void;
 }) {
@@ -164,18 +160,14 @@ function UserCard({
       onClick={onClick}
       className={cn(
         'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors',
-        selected
-          ? 'bg-primary/10 border border-primary/30'
-          : 'border border-transparent hover:bg-muted/50',
+        selected ? 'bg-primary/10 border border-primary/30' : 'border border-transparent hover:bg-muted/50',
       )}
     >
       <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
         <User className="size-4 text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium leading-tight truncate">
-          {profile.display_name ?? profile.email}
-        </p>
+        <p className="text-sm font-medium leading-tight truncate">{profile.display_name ?? profile.email}</p>
         <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -202,26 +194,20 @@ export function PermissionsPage() {
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   // Local copy of mock permissions (mutable during session)
-  const [allPerms, setAllPerms] = useState<Record<string, UserPermission[]>>(
-    () => structuredClone(MOCK_PERMISSIONS),
-  );
+  const [allPerms, setAllPerms] = useState<Record<string, UserPermission[]>>(() => structuredClone(MOCK_PERMISSIONS));
 
   const permissions = selectedUserId ? (allPerms[selectedUserId] ?? []) : [];
   const selectedProfile = MOCK_PROFILES.find((p) => p.id === selectedUserId);
 
   function findPerm(type: ResourceType, resourceId: string) {
-    return permissions.find(
-      (p) => p.resource_type === type && p.resource_id === resourceId,
-    );
+    return permissions.find((p) => p.resource_type === type && p.resource_id === resourceId);
   }
 
   const handlePermissionChanged = useCallback(
     (userId: string, resourceType: ResourceType, resourceId: string, newPerms: string[]) => {
       setAllPerms((prev) => {
         const userPerms = [...(prev[userId] ?? [])];
-        const idx = userPerms.findIndex(
-          (p) => p.resource_type === resourceType && p.resource_id === resourceId,
-        );
+        const idx = userPerms.findIndex((p) => p.resource_type === resourceType && p.resource_id === resourceId);
         if (newPerms.length === 0) {
           // Remove
           if (idx !== -1) userPerms.splice(idx, 1);
@@ -254,9 +240,7 @@ export function PermissionsPage() {
           </div>
           <div>
             <h1 className="text-lg font-semibold">Управління доступами</h1>
-            <p className="text-sm text-muted-foreground">
-              Налаштуйте права читання та запису для кожного користувача
-            </p>
+            <p className="text-sm text-muted-foreground">Налаштуйте права читання та запису для кожного користувача</p>
           </div>
         </div>
 
@@ -265,13 +249,13 @@ export function PermissionsPage() {
           <div className="rounded-xl border bg-card">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <span className="text-sm font-semibold">Користувачі</span>
-              <Badge variant="secondary" className="text-xs">{MOCK_PROFILES.length}</Badge>
+              <Badge variant="secondary" className="text-xs">
+                {MOCK_PROFILES.length}
+              </Badge>
             </div>
 
             {MOCK_PROFILES.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-12">
-                Інших користувачів не знайдено
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-12">Інших користувачів не знайдено</p>
             )}
 
             {MOCK_PROFILES.length > 0 && (
@@ -308,9 +292,7 @@ export function PermissionsPage() {
                     <p className="text-sm font-semibold leading-tight truncate">
                       {selectedProfile?.display_name ?? selectedProfile?.email}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {selectedProfile?.email}
-                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{selectedProfile?.email}</p>
                   </div>
                 </div>
 
@@ -319,9 +301,7 @@ export function PermissionsPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <Warehouse className="size-4 text-indigo-500" />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Склади
-                      </span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Склади</span>
                     </div>
                     <div className="flex flex-col divide-y">
                       {warehouses.map((wh) => (
@@ -331,7 +311,6 @@ export function PermissionsPage() {
                           address={wh.address}
                           type="warehouse"
                           resourceId={wh.id}
-                          userId={selectedUserId}
                           perm={findPerm('warehouse', wh.id)}
                           onChanged={(rt, rid, perms) => handlePermissionChanged(selectedUserId, rt, rid, perms)}
                         />
@@ -345,9 +324,7 @@ export function PermissionsPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <MapPin className="size-4 text-primary" />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Точки доставки
-                      </span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Точки доставки</span>
                     </div>
                     <div className="flex flex-col divide-y">
                       {deliveryPoints.map((pt) => (
@@ -357,7 +334,6 @@ export function PermissionsPage() {
                           address={pt.address}
                           type="point"
                           resourceId={pt.id}
-                          userId={selectedUserId}
                           perm={findPerm('point', pt.id)}
                           onChanged={(rt, rid, perms) => handlePermissionChanged(selectedUserId, rt, rid, perms)}
                         />
