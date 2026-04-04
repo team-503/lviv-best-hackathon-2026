@@ -1,4 +1,4 @@
-export type CriticalityLevel = 'normal' | 'needed' | 'critical' | 'urgent';
+export type CriticalityLevel = 'normal' | 'medium' | 'high' | 'critical' | 'urgent';
 
 export interface DeliveryRequest {
   id: string;
@@ -72,7 +72,7 @@ export const DELIVERY_REQUESTS: DeliveryRequest[] = [
     pointId: 'd3',
     productId: 'p4',
     quantity: 3000,
-    criticality: 'needed',
+    criticality: 'medium',
     createdAt: '2026-04-04T08:00:00Z',
     status: 'planned',
   },
@@ -137,8 +137,9 @@ export const DELIVERY_PLAN: DeliveryPlan = {
 
 // ─── Helpers ───
 export const CRITICALITY_CONFIG: Record<CriticalityLevel, { label: string; color: string; priority: number }> = {
-  urgent: { label: 'Терміново', color: 'destructive', priority: 4 },
-  critical: { label: 'Критично', color: 'warning', priority: 3 },
-  needed: { label: 'Дуже потрібно', color: 'secondary', priority: 2 },
+  urgent: { label: 'Терміново', color: 'destructive', priority: 5 },
+  critical: { label: 'Критично', color: 'warning', priority: 4 },
+  high: { label: 'Високий', color: 'secondary', priority: 3 },
+  medium: { label: 'Середній', color: 'secondary', priority: 2 },
   normal: { label: 'Нормально', color: 'outline', priority: 1 },
 };

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-type CriticalityLevel = 'normal' | 'needed' | 'critical' | 'urgent';
+type CriticalityLevel = 'normal' | 'medium' | 'high' | 'critical' | 'urgent';
 
 const CONFIG: Record<CriticalityLevel, { label: string; classes: string }> = {
   urgent: {
@@ -11,9 +11,13 @@ const CONFIG: Record<CriticalityLevel, { label: string; classes: string }> = {
     label: 'Критично',
     classes: 'bg-orange-500/15 text-orange-600 border-orange-500/30 dark:text-orange-400',
   },
-  needed: {
-    label: 'Дуже потрібно',
+  high: {
+    label: 'Високий',
     classes: 'bg-amber-400/15 text-amber-700 border-amber-400/30 dark:text-amber-400',
+  },
+  medium: {
+    label: 'Середній',
+    classes: 'bg-yellow-400/15 text-yellow-700 border-yellow-400/30 dark:text-yellow-400',
   },
   normal: {
     label: 'Нормально',
@@ -22,15 +26,15 @@ const CONFIG: Record<CriticalityLevel, { label: string; classes: string }> = {
 };
 
 interface Props {
-  level: CriticalityLevel;
+  level: string;
   className?: string;
 }
 
 export function CriticalityBadge({ level, className }: Props) {
-  const { label, classes } = CONFIG[level];
+  const cfg = CONFIG[level as CriticalityLevel] ?? CONFIG.normal;
   return (
-    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', classes, className)}>
-      {label}
+    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', cfg.classes, className)}>
+      {cfg.label}
     </span>
   );
 }

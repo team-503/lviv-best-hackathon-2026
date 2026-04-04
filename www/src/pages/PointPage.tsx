@@ -8,15 +8,145 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { CriticalityBadge } from '@/components/ui/criticality-badge';
 import { getPoint, updatePointStock } from '@/lib/api/points';
-import type { PointDetailResponseDto, PointStockItemResponseDto } from '@/types/api';
-type CriticalityLevel = 'normal' | 'needed' | 'critical' | 'urgent';
+import { createDeliveryRequest, updateDeliveryRequest, deleteDeliveryRequest } from '@/lib/api/delivery-requests';
+import type {
+  PointDetailResponseDto,
+  PointStockItemResponseDto,
+  DeliveryRequestResponseDto,
+  ProductResponseDto,
+} from '@/types/api';
+import { useAppSelector } from '@/store/hooks';
 import { Package, MapPin, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, Save, X, Loader2 } from 'lucide-react';
 
+type CriticalityLevel = 'normal' | 'medium' | 'high' | 'critical' | 'urgent';
+
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; classes: string }> = {
-  pending: { label: 'Очікує', icon: Clock, classes: 'text-muted-foreground' },
-  planned: { label: 'Заплановано', icon: CheckCircle2, classes: 'text-primary' },
+  active: { label: 'Активний', icon: Clock, classes: 'text-muted-foreground' },
   completed: { label: 'Виконано', icon: CheckCircle2, classes: 'text-emerald-500' },
+  cancelled: { label: 'Скасовано', icon: X, classes: 'text-destructive' },
 };
+
+const CRITICALITY_OPTIONS: { value: CriticalityLevel; label: string }[] = [
+  { value: 'urgent', label: 'Терміново' },
+  { value: 'critical', label: 'Критично' },
+  { value: 'high', label: 'Високий' },
+  { value: 'medium', label: 'Середній' },
+  { value: 'normal', label: 'Нормально' },
+];
+
+// ─── Request Dialog ───
+function RequestDialog({
+  pointId,
+  products,
+  request,
+  onSaved,
+  onClose,
+}: {
+  pointId: number;
+  products: ProductResponseDto[];
+  request?: DeliveryRequestResponseDto;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const [productId, setProductId] = useState<number>(request?.product.id ?? products[0]?.id ?? 0);
+  const [quantity, setQuantity] = useState<string>(request ? String(request.quantity) : '');
+  const [criticality, setCriticality] = useState<CriticalityLevel>((request?.criticality as CriticalityLevel) ?? 'normal');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit() {
+    const qty = parseInt(quantity);
+    if (isNaN(qty) || qty <= 0 || productId === 0) return;
+    setSaving(true);
+    try {
+      if (request) {
+        await updateDeliveryRequest(pointId, request.id, {
+          productId,
+          quantity: qty,
+          criticality,
+        });
+      } else {
+        await createDeliveryRequest(pointId, {
+          productId,
+          quantity: qty,
+          criticality,
+        });
+      }
+      onSaved();
+    } catch {
+      // keep dialog open on error
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm">{request ? 'Редагувати запит' : 'Новий запит на доставку'}</CardTitle>
+          <Button size="icon" variant="ghost" className="size-7" onClick={onClose}>
+            <X className="size-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Товар</label>
+          <select
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            value={productId}
+            onChange={(e) => setProductId(Number(e.target.value))}
+          >
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Кількість</label>
+          <Input
+            type="number"
+            min={1}
+            placeholder="Введіть кількість"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleSubmit();
+            }}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Критичність</label>
+          <select
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            value={criticality}
+            onChange={(e) => setCriticality(e.target.value as CriticalityLevel)}
+          >
+            {CRITICALITY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+            Скасувати
+          </Button>
+          <Button size="sm" onClick={() => void handleSubmit()} disabled={saving}>
+            {saving && <Loader2 className="size-4 animate-spin mr-1" />}
+            Зберегти
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 // ─── Stock Row ───
 function StockRow({
@@ -118,6 +248,11 @@ export function PointPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(null);
+  const [editingRequest, setEditingRequest] = useState<DeliveryRequestResponseDto | undefined>(undefined);
+
+  const products = useAppSelector((s) => s.products.products);
+
   const fetchPoint = useCallback(async () => {
     if (!id) return;
     try {
@@ -134,6 +269,36 @@ export function PointPage() {
   useEffect(() => {
     void fetchPoint();
   }, [fetchPoint]);
+
+  function openCreateDialog() {
+    setEditingRequest(undefined);
+    setDialogMode('create');
+  }
+
+  function openEditDialog(req: DeliveryRequestResponseDto) {
+    setEditingRequest(req);
+    setDialogMode('edit');
+  }
+
+  function closeDialog() {
+    setDialogMode(null);
+    setEditingRequest(undefined);
+  }
+
+  function handleSaved() {
+    closeDialog();
+    void fetchPoint();
+  }
+
+  async function handleDelete(requestId: number) {
+    if (!point) return;
+    try {
+      await deleteDeliveryRequest(point.id, requestId);
+      void fetchPoint();
+    } catch {
+      // silently fail for now
+    }
+  }
 
   if (loading) {
     return (
@@ -218,24 +383,33 @@ export function PointPage() {
                   {requests.length === 0 ? 'Немає активних запитів' : `${requests.length} запит(ів)`}
                 </CardDescription>
               </div>
-              {/* TODO: connect to Delivery Requests API when backend module is ready */}
-              <Button size="sm" disabled title="Скоро буде доступно">
+              <Button size="sm" onClick={openCreateDialog}>
                 <Plus className="size-4" data-icon="inline-start" />
                 Новий
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {requests.length === 0 ? (
+            {dialogMode !== null && (
+              <RequestDialog
+                pointId={point.id}
+                products={products}
+                request={dialogMode === 'edit' ? editingRequest : undefined}
+                onSaved={handleSaved}
+                onClose={closeDialog}
+              />
+            )}
+
+            {requests.length === 0 && dialogMode === null ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Package className="size-8 text-muted-foreground/40 mb-2" />
                 <p className="text-sm text-muted-foreground">Запитів немає</p>
-                <p className="text-xs text-muted-foreground mt-1">Створення запитів скоро буде доступно</p>
+                <p className="text-xs text-muted-foreground mt-1">Натисніть &quot;Новий&quot; щоб створити запит</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
                 {requests.map((req) => {
-                  const statusCfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending;
+                  const statusCfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.active;
                   const StatusIcon = statusCfg.icon;
 
                   return (
@@ -245,7 +419,7 @@ export function PointPage() {
                           <p className="text-sm font-medium truncate">{req.product.name}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">{req.quantity.toLocaleString()}</p>
                         </div>
-                        <CriticalityBadge level={req.criticality as CriticalityLevel} />
+                        <CriticalityBadge level={req.criticality} />
                       </div>
 
                       <Separator className="my-2" />
@@ -262,18 +436,23 @@ export function PointPage() {
                           </span>
                         </div>
 
-                        {/* TODO: connect to Delivery Requests API when backend module is ready */}
-                        {req.status === 'pending' && (
+                        {req.status === 'active' && (
                           <div className="flex items-center gap-1">
-                            <Button size="icon" variant="ghost" className="size-7" disabled title="Скоро буде доступно">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-7"
+                              onClick={() => openEditDialog(req)}
+                              title="Редагувати"
+                            >
                               <Pencil className="size-3.5" />
                             </Button>
                             <Button
                               size="icon"
                               variant="ghost"
                               className="size-7 text-destructive hover:text-destructive"
-                              disabled
-                              title="Скоро буде доступно"
+                              onClick={() => void handleDelete(req.id)}
+                              title="Видалити"
                             >
                               <Trash2 className="size-3.5" />
                             </Button>

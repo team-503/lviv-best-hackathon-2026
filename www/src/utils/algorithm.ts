@@ -21,9 +21,10 @@ export function haversine(lat1: number, lng1: number, lat2: number, lng2: number
 
 // ─── Priority ───
 const PRIORITY: Record<CriticalityLevel, number> = {
-  urgent: 4,
-  critical: 3,
-  needed: 2,
+  urgent: 5,
+  critical: 4,
+  high: 3,
+  medium: 2,
   normal: 1,
 };
 

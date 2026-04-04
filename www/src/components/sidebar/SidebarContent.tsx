@@ -11,7 +11,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleRoute, setAllRoutes, clearRoutes } from '@/store/slices/uiSlice';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 
-type CriticalityLevel = 'normal' | 'needed' | 'critical' | 'urgent';
+type CriticalityLevel = 'normal' | 'medium' | 'high' | 'critical' | 'urgent';
 
 // ─── Points List ───
 function PointCard({
@@ -138,7 +138,7 @@ function PointsTab({
 }
 
 // ─── Requests Tab ───
-const CRITICALITY_ORDER: CriticalityLevel[] = ['urgent', 'critical', 'needed', 'normal'];
+const CRITICALITY_ORDER: CriticalityLevel[] = ['urgent', 'critical', 'high', 'medium', 'normal'];
 
 function RequestsTab() {
   const requests = useAppSelector((s) => s.requests.requests);
