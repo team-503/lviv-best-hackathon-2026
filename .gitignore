@@ -44,5 +44,4 @@ Temporary Items
 
 # End of https://www.toptal.com/developers/gitignore/api/firebase,macos
 firebase-debug.log
-docs/superpowers
-supabase/
+**/CLAUDE.local.md

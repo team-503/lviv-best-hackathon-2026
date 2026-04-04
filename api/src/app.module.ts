@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { getSessionIdentifier } from './common/helpers/session-identifier';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProductsModule } from './products/products.module';
 import { ProfilesModule } from './profiles/profiles.module';
 
 @Module({
@@ -34,6 +35,7 @@ import { ProfilesModule } from './profiles/profiles.module';
     PrismaModule,
     AuthModule,
     ProfilesModule,
+    ProductsModule,
   ],
   providers: [
     {
