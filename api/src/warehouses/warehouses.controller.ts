@@ -39,7 +39,7 @@ export class WarehousesController {
 
   @Patch(':id/stock')
   @Auth(PermissionLevel.Write, ResourceType.Warehouse)
-  @ApiOperation({ summary: 'Update warehouse stock quantities (read, write)' })
+  @ApiOperation({ summary: 'Update warehouse stock quantities (write)' })
   @ApiResponse({ status: 200, description: 'Number of updated stock items', type: StockUpdatedResponseDto })
   updateStock(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStockDto): Promise<StockUpdatedResponseDto> {
     return this.warehousesService.updateStock(id, dto.items);

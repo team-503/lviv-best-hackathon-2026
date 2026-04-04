@@ -10,11 +10,11 @@
   },
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write .",
     "start": "nest start",
     "dev": "NODE_ENV=development nest start --watch",
     "start:debug": "NODE_ENV=development nest start --debug --watch",
     "start:prod": "NODE_ENV=production node dist/main",
+    "format": "prettier --write .",
     "eslint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit",
     "lint-staged": "lint-staged",

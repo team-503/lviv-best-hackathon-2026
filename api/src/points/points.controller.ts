@@ -43,7 +43,7 @@ export class PointsController {
 
   @Patch(':id/stock')
   @Auth(PermissionLevel.Write, ResourceType.Point)
-  @ApiOperation({ summary: 'Update point stock minimum thresholds (read, write)' })
+  @ApiOperation({ summary: 'Update point stock minimum thresholds (write)' })
   @ApiResponse({ status: 200, description: 'Number of updated stock items', type: StockUpdatedResponseDto })
   updateStock(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePointStockDto): Promise<StockUpdatedResponseDto> {
     return this.pointsService.updateStock(id, dto.items);
