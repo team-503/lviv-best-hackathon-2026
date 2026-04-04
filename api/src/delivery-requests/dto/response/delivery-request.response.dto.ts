@@ -13,10 +13,10 @@ export class DeliveryRequestResponseDto {
   @ApiProperty({ example: 10 })
   quantity: number;
 
-  @ApiProperty({ enum: CriticalityLevel, example: CriticalityLevel.Critical })
+  @ApiProperty({ enum: CriticalityLevel, description: 'Criticality level', example: CriticalityLevel.Critical })
   criticality: CriticalityLevel;
 
-  @ApiProperty({ enum: RequestStatus, example: RequestStatus.Active })
+  @ApiProperty({ enum: RequestStatus, description: 'Request status', example: RequestStatus.Active })
   status: RequestStatus;
 
   @ApiProperty({ example: '2026-04-04T10:00:00Z' })

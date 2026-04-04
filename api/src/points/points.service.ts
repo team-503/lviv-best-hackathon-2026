@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { StockUpdatedResponseDto } from '../common/dto/response/stock-updated.response.dto';
+import { RequestStatus } from '../common/enums/request-status.enum';
+import { toDeliveryRequest } from '../delivery-requests/delivery-requests.helper';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePointDto } from './dto/request/create-point.dto';
 import type { UpdatePointStockItemDto } from './dto/request/update-point-stock-item.dto';
@@ -8,7 +10,7 @@ import type { UpdatePointDto } from './dto/request/update-point.dto';
 import type { PointDetailResponseDto } from './dto/response/point-detail.response.dto';
 import type { PointListItemResponseDto } from './dto/response/point-list-item.response.dto';
 import type { PointResponseDto } from './dto/response/point.response.dto';
-import { toDeliveryRequest, toPointBase, toPointListItem, toPointStockItem } from './points.helper';
+import { toPointBase, toPointListItem, toPointStockItem } from './points.helper';
 import type { PointRow } from './types/point-row.type';
 import type { PointWithPermissionsRow } from './types/point-with-permissions-row.type';
 
@@ -126,7 +128,7 @@ export class PointsService {
         include: { products: true },
       }),
       client.delivery_requests.findMany({
-        where: { point_id: id, status: 'active' },
+        where: { point_id: id, status: RequestStatus.Active },
         include: { products: true },
         orderBy: { created_at: 'desc' },
       }),

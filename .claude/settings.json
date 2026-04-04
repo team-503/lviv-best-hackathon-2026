@@ -1,11 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run typecheck)",
       "Bash(find:*)",
       "Bash(ls:*)",
       "Bash(grep:*)",
       "Bash(cat:*)",
+      "Bash(npm run eslint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run lint-staged)",
+      "Bash(npm run prisma:pull)",
+      "Bash(npm run prisma:generate)",
       "Skill(code-review:code-review)"
     ]
   },
@@ -41,6 +45,7 @@
     "code-review@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": false,
     "firebase@claude-plugins-official": false,
-    "supabase@claude-plugins-official": true
+    "supabase@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true
   }
 }
