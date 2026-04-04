@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Users, Warehouse, MapPin, ShieldCheck, User, ChevronRight, Loader2 } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,12 +7,10 @@ import { Separator } from '@/components/ui/separator';
 import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/lib/utils';
 import { getLevel, levelToArray } from '@/lib/permissions';
+import type { PermissionLevel, ResourceType } from '@/lib/permissions';
 import { getUsers } from '@/lib/api/profiles';
 import { getPermissions, createPermission, updatePermission, deletePermission } from '@/lib/api/permissions';
 import type { UserResponseDto, PermissionResponseDto } from '@/types/api';
-
-type PermissionLevel = 'none' | 'read' | 'write';
-type ResourceType = 'point' | 'warehouse';
 
 // ─── Permission toggle ───
 const LEVELS: { value: PermissionLevel; label: string }[] = [
@@ -158,8 +156,8 @@ function UserCard({
 // ─── Main page ───
 export function PermissionsPage() {
   const points = useAppSelector((s) => s.mapPoints.points);
-  const warehouses = points.filter((p) => p.type === 'warehouse');
-  const deliveryPoints = points.filter((p) => p.type === 'point');
+  const warehouses = useMemo(() => points.filter((p) => p.type === 'warehouse'), [points]);
+  const deliveryPoints = useMemo(() => points.filter((p) => p.type === 'point'), [points]);
 
   const [users, setUsers] = useState<UserResponseDto[]>([]);
   const [allPerms, setAllPerms] = useState<PermissionResponseDto[]>([]);
@@ -202,39 +200,42 @@ export function PermissionsPage() {
     return userPerms.find((p) => p.resourceType === type && p.resourceId === resourceId);
   }
 
-  const handlePermissionChanged = useCallback(
-    async (userId: string, resourceType: ResourceType, resourceId: number, newPerms: string[]) => {
-      const existing = allPerms.find(
-        (p) => p.userId === userId && p.resourceType === resourceType && p.resourceId === resourceId,
-      );
+  const permCountByUser = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of allPerms) {
+      map.set(p.userId, (map.get(p.userId) ?? 0) + 1);
+    }
+    return map;
+  }, [allPerms]);
 
-      try {
-        if (newPerms.length === 0) {
-          // Delete
-          if (existing) {
-            await deletePermission(existing.id);
-            setAllPerms((prev) => prev.filter((p) => p.id !== existing.id));
-          }
-        } else if (existing) {
-          // Update
-          const updated = await updatePermission(existing.id, newPerms);
-          setAllPerms((prev) => prev.map((p) => (p.id === existing.id ? updated : p)));
-        } else {
-          // Create
-          const created = await createPermission({
-            userId,
-            resourceType,
-            resourceId,
-            permissions: newPerms,
-          });
-          setAllPerms((prev) => [...prev, created]);
+  async function handlePermissionChanged(userId: string, resourceType: ResourceType, resourceId: number, newPerms: string[]) {
+    const existing = allPerms.find((p) => p.userId === userId && p.resourceType === resourceType && p.resourceId === resourceId);
+
+    try {
+      if (newPerms.length === 0) {
+        // Delete
+        if (existing) {
+          await deletePermission(existing.id);
+          setAllPerms((prev) => prev.filter((p) => p.id !== existing.id));
         }
-      } catch (err) {
-        console.error('Failed to update permission:', err);
+      } else if (existing) {
+        // Update
+        const updated = await updatePermission(existing.id, newPerms);
+        setAllPerms((prev) => prev.map((p) => (p.id === existing.id ? updated : p)));
+      } else {
+        // Create
+        const created = await createPermission({
+          userId,
+          resourceType,
+          resourceId,
+          permissions: newPerms,
+        });
+        setAllPerms((prev) => [...prev, created]);
       }
-    },
-    [allPerms],
-  );
+    } catch (err) {
+      console.error('Failed to update permission:', err);
+    }
+  }
 
   if (loading) {
     return (
@@ -292,7 +293,7 @@ export function PermissionsPage() {
                       key={profile.id}
                       profile={profile}
                       selected={selectedUserId === profile.id}
-                      permCount={allPerms.filter((p) => p.userId === profile.id).length}
+                      permCount={permCountByUser.get(profile.id) ?? 0}
                       onClick={() => setSelectedUserId(profile.id)}
                     />
                   ))}

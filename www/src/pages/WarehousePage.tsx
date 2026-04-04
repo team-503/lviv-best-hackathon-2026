@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getWarehouse, updateWarehouseStock } from '@/lib/api/warehouses';
-import { getProducts } from '@/lib/api/products';
+import { useAppSelector } from '@/store/hooks';
 import type { WarehouseDetailResponseDto, ProductResponseDto } from '@/types/api';
 import { Package, Warehouse, Plus, Pencil, Trash2, Save, X, Infinity, Loader2 } from 'lucide-react';
 
@@ -188,11 +188,31 @@ export function WarehousePage() {
   const navigate = useNavigate();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [warehouse, setWarehouse] = useState<WarehouseDetailResponseDto | null>(null);
-  const [products, setProducts] = useState<ProductResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const products = useAppSelector((s) => s.products.products);
 
-  const fetchWarehouse = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!id) return;
+      try {
+        setError(null);
+        const data = await getWarehouse(Number(id));
+        if (!cancelled) setWarehouse(data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Не вдалося завантажити склад');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  async function refetchWarehouse() {
     if (!id) return;
     try {
       setError(null);
@@ -200,57 +220,36 @@ export function WarehousePage() {
       setWarehouse(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не вдалося завантажити склад');
-    } finally {
-      setLoading(false);
     }
-  }, [id]);
+  }
 
-  useEffect(() => {
-    fetchWarehouse();
-    getProducts()
-      .then(setProducts)
-      .catch(() => {});
-  }, [fetchWarehouse]);
+  async function handleUpdateStock(items: { productId: number; quantity: number }[]) {
+    if (!id) return;
+    await updateWarehouseStock(Number(id), items);
+    await refetchWarehouse();
+  }
 
-  const handleUpdateStock = useCallback(
-    async (items: { productId: number; quantity: number }[]) => {
-      if (!id) return;
-      await updateWarehouseStock(Number(id), items);
-      await fetchWarehouse();
-    },
-    [id, fetchWarehouse],
-  );
+  async function handleSaveQuantity(productId: number, quantity: number) {
+    if (!warehouse) return;
+    const items = warehouse.stock.map((s) =>
+      s.product.id === productId ? { productId: s.product.id, quantity } : { productId: s.product.id, quantity: s.quantity },
+    );
+    await handleUpdateStock(items);
+  }
 
-  const handleSaveQuantity = useCallback(
-    async (productId: number, quantity: number) => {
-      if (!warehouse) return;
-      const items = warehouse.stock.map((s) =>
-        s.product.id === productId ? { productId: s.product.id, quantity } : { productId: s.product.id, quantity: s.quantity },
-      );
-      await handleUpdateStock(items);
-    },
-    [warehouse, handleUpdateStock],
-  );
+  async function handleRemoveProduct(productId: number) {
+    if (!warehouse) return;
+    const items = warehouse.stock
+      .filter((s) => s.product.id !== productId)
+      .map((s) => ({ productId: s.product.id, quantity: s.quantity }));
+    await handleUpdateStock(items);
+  }
 
-  const handleRemoveProduct = useCallback(
-    async (productId: number) => {
-      if (!warehouse) return;
-      const items = warehouse.stock
-        .filter((s) => s.product.id !== productId)
-        .map((s) => ({ productId: s.product.id, quantity: s.quantity }));
-      await handleUpdateStock(items);
-    },
-    [warehouse, handleUpdateStock],
-  );
-
-  const handleAddProduct = useCallback(
-    async (productId: number, quantity: number) => {
-      if (!warehouse) return;
-      const items = [...warehouse.stock.map((s) => ({ productId: s.product.id, quantity: s.quantity })), { productId, quantity }];
-      await handleUpdateStock(items);
-    },
-    [warehouse, handleUpdateStock],
-  );
+  async function handleAddProduct(productId: number, quantity: number) {
+    if (!warehouse) return;
+    const items = [...warehouse.stock.map((s) => ({ productId: s.product.id, quantity: s.quantity })), { productId, quantity }];
+    await handleUpdateStock(items);
+  }
 
   if (loading) {
     return (

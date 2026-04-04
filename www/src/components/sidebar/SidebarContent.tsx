@@ -9,9 +9,8 @@ import { MapPin, Warehouse, Package, Route, CheckCircle2, Clock, ExternalLink } 
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleRoute, setAllRoutes, clearRoutes } from '@/store/slices/uiSlice';
+import type { CriticalityLevel } from '@/data/mockData';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
-
-type CriticalityLevel = 'normal' | 'medium' | 'high' | 'critical' | 'urgent';
 
 // ─── Points List ───
 function PointCard({

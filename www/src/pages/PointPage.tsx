@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,9 +16,8 @@ import type {
   ProductResponseDto,
 } from '@/types/api';
 import { useAppSelector } from '@/store/hooks';
+import type { CriticalityLevel } from '@/data/mockData';
 import { Package, MapPin, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, Save, X, Loader2 } from 'lucide-react';
-
-type CriticalityLevel = 'normal' | 'medium' | 'high' | 'critical' | 'urgent';
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; classes: string }> = {
   active: { label: 'Активний', icon: Clock, classes: 'text-muted-foreground' },
@@ -248,12 +247,33 @@ export function PointPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | null>(null);
-  const [editingRequest, setEditingRequest] = useState<DeliveryRequestResponseDto | undefined>(undefined);
+  const [dialogState, setDialogState] = useState<
+    { mode: 'create' } | { mode: 'edit'; request: DeliveryRequestResponseDto } | null
+  >(null);
 
   const products = useAppSelector((s) => s.products.products);
 
-  const fetchPoint = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!id) return;
+      try {
+        setError(null);
+        const data = await getPoint(Number(id));
+        if (!cancelled) setPoint(data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Не вдалося завантажити дані точки');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  async function refetchPoint() {
     if (!id) return;
     try {
       setError(null);
@@ -261,40 +281,19 @@ export function PointPage() {
       setPoint(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не вдалося завантажити дані точки');
-    } finally {
-      setLoading(false);
     }
-  }, [id]);
-
-  useEffect(() => {
-    void fetchPoint();
-  }, [fetchPoint]);
-
-  function openCreateDialog() {
-    setEditingRequest(undefined);
-    setDialogMode('create');
-  }
-
-  function openEditDialog(req: DeliveryRequestResponseDto) {
-    setEditingRequest(req);
-    setDialogMode('edit');
-  }
-
-  function closeDialog() {
-    setDialogMode(null);
-    setEditingRequest(undefined);
   }
 
   function handleSaved() {
-    closeDialog();
-    void fetchPoint();
+    setDialogState(null);
+    void refetchPoint();
   }
 
   async function handleDelete(requestId: number) {
     if (!point) return;
     try {
       await deleteDeliveryRequest(point.id, requestId);
-      void fetchPoint();
+      void refetchPoint();
     } catch {
       // silently fail for now
     }
@@ -363,7 +362,7 @@ export function PointPage() {
                   <div className="min-w-[120px] text-right">Мін. поріг</div>
                 </div>
                 {point.stock.map((s) => (
-                  <StockRow key={s.product.id} item={s} pointId={point.id} onThresholdSaved={() => void fetchPoint()} />
+                  <StockRow key={s.product.id} item={s} pointId={point.id} onThresholdSaved={() => void refetchPoint()} />
                 ))}
               </div>
             )}
@@ -383,24 +382,24 @@ export function PointPage() {
                   {requests.length === 0 ? 'Немає активних запитів' : `${requests.length} запит(ів)`}
                 </CardDescription>
               </div>
-              <Button size="sm" onClick={openCreateDialog}>
+              <Button size="sm" onClick={() => setDialogState({ mode: 'create' })}>
                 <Plus className="size-4" data-icon="inline-start" />
                 Новий
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {dialogMode !== null && (
+            {dialogState !== null && (
               <RequestDialog
                 pointId={point.id}
                 products={products}
-                request={dialogMode === 'edit' ? editingRequest : undefined}
+                request={dialogState.mode === 'edit' ? dialogState.request : undefined}
                 onSaved={handleSaved}
-                onClose={closeDialog}
+                onClose={() => setDialogState(null)}
               />
             )}
 
-            {requests.length === 0 && dialogMode === null ? (
+            {requests.length === 0 && dialogState === null ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Package className="size-8 text-muted-foreground/40 mb-2" />
                 <p className="text-sm text-muted-foreground">Запитів немає</p>
@@ -442,7 +441,7 @@ export function PointPage() {
                               size="icon"
                               variant="ghost"
                               className="size-7"
-                              onClick={() => openEditDialog(req)}
+                              onClick={() => setDialogState({ mode: 'edit', request: req })}
                               title="Редагувати"
                             >
                               <Pencil className="size-3.5" />
