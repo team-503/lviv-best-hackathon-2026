@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { StockItemDto } from '../common/dto/request/stock-item.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,17 +8,9 @@ import type { StockUpdatedResponseDto } from './dto/response/stock-updated.respo
 import type { WarehouseDetailResponseDto } from './dto/response/warehouse-detail.response.dto';
 import type { WarehouseListItemResponseDto } from './dto/response/warehouse-list-item.response.dto';
 import type { WarehouseResponseDto } from './dto/response/warehouse.response.dto';
-
-interface WarehouseRow {
-  id: number;
-  name: string;
-  lat: number;
-  lng: number;
-}
-
-interface WarehouseWithPermissionsRow extends WarehouseRow {
-  permissions: string[] | null;
-}
+import type { WarehouseRow } from './types/warehouse-row.type';
+import type { WarehouseWithPermissionsRow } from './types/warehouse-with-permissions-row.type';
+import { toStockItem, toWarehouseBase, toWarehouseListItem } from './warehouses.helper';
 
 @Injectable()
 export class WarehousesService {
@@ -40,44 +32,11 @@ export class WarehousesService {
       ORDER BY w.id
     `;
 
-    return rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      location: { lat: r.lat, lng: r.lng },
-      permissions: r.permissions ?? null,
-    }));
+    return rows.map((r) => toWarehouseListItem(r));
   }
 
   async findOne(id: number): Promise<WarehouseDetailResponseDto> {
-    const rows = await this.prisma.$queryRaw<WarehouseRow[]>`
-      SELECT
-        w.id,
-        w.name,
-        ST_Y(w.location::geometry) AS lat,
-        ST_X(w.location::geometry) AS lng
-      FROM warehouses w
-      WHERE w.id = ${id}
-    `;
-    if (rows.length === 0) {
-      throw new NotFoundException('Warehouse not found');
-    }
-
-    const warehouse = rows[0];
-
-    const stockRows = await this.prisma.warehouse_stock.findMany({
-      where: { warehouse_id: id },
-      include: { products: true },
-    });
-
-    return {
-      id: warehouse.id,
-      name: warehouse.name,
-      location: { lat: warehouse.lat, lng: warehouse.lng },
-      stock: stockRows.map((s) => ({
-        product: { id: s.products.id, name: s.products.name },
-        quantity: s.quantity,
-      })),
-    };
+    return this.findOneWithClient(this.prisma, id);
   }
 
   async create(data: CreateWarehouseDto): Promise<WarehouseDetailResponseDto> {
@@ -100,49 +59,34 @@ export class WarehousesService {
         });
       }
 
-      return this.findOneInTransaction(tx, inserted.id);
+      return this.findOneWithClient(tx, inserted.id);
     });
   }
 
   async update(id: number, data: UpdateWarehouseDto): Promise<WarehouseResponseDto> {
     const { name, location } = data;
 
-    let count: number;
-
-    if (name && location) {
-      count = await this.prisma.$executeRaw`
-        UPDATE warehouses
-        SET name = ${name}, location = ST_SetSRID(ST_MakePoint(${location.lng}, ${location.lat}), 4326)::geography
-        WHERE id = ${id}
-      `;
-    } else if (name) {
-      count = await this.prisma.$executeRaw`
-        UPDATE warehouses SET name = ${name} WHERE id = ${id}
-      `;
-    } else if (location) {
-      count = await this.prisma.$executeRaw`
-        UPDATE warehouses
-        SET location = ST_SetSRID(ST_MakePoint(${location.lng}, ${location.lat}), 4326)::geography
-        WHERE id = ${id}
-      `;
-    } else {
-      throw new NotFoundException('Warehouse not found');
-    }
-
-    if (count === 0) {
-      throw new NotFoundException('Warehouse not found');
+    if (!name && !location) {
+      throw new BadRequestException('At least one field (name or location) must be provided');
     }
 
     const rows = await this.prisma.$queryRaw<WarehouseRow[]>`
-      SELECT w.id, w.name, ST_Y(w.location::geometry) AS lat, ST_X(w.location::geometry) AS lng
-      FROM warehouses w WHERE w.id = ${id}
+      UPDATE warehouses
+      SET
+        name = COALESCE(${name ?? null}, name),
+        location = COALESCE(
+          ${location ? Prisma.sql`ST_SetSRID(ST_MakePoint(${location.lng}, ${location.lat}), 4326)::geography` : Prisma.sql`NULL`},
+          location
+        )
+      WHERE id = ${id}
+      RETURNING id, name, ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng
     `;
 
-    return {
-      id: rows[0].id,
-      name: rows[0].name,
-      location: { lat: rows[0].lat, lng: rows[0].lng },
-    };
+    if (rows.length === 0) {
+      throw new NotFoundException('Warehouse not found');
+    }
+
+    return toWarehouseBase(rows[0]);
   }
 
   async remove(id: number): Promise<void> {
@@ -156,39 +100,42 @@ export class WarehousesService {
   }
 
   async updateStock(warehouseId: number, items: StockItemDto[]): Promise<StockUpdatedResponseDto> {
-    await this.prisma.$transaction(async (tx) => {
-      for (const item of items) {
-        await tx.$executeRaw`
-          INSERT INTO warehouse_stock (warehouse_id, product_id, quantity)
-          VALUES (${warehouseId}, ${item.productId}, ${item.quantity})
-          ON CONFLICT (warehouse_id, product_id)
-          DO UPDATE SET quantity = EXCLUDED.quantity
-        `;
-      }
-    });
+    if (items.length > 0) {
+      const values = Prisma.join(items.map((i) => Prisma.sql`(${warehouseId}, ${i.productId}, ${i.quantity})`));
+
+      await this.prisma.$executeRaw`
+        INSERT INTO warehouse_stock (warehouse_id, product_id, quantity)
+        VALUES ${values}
+        ON CONFLICT (warehouse_id, product_id)
+        DO UPDATE SET quantity = EXCLUDED.quantity
+      `;
+    }
 
     return { updated: items.length };
   }
 
-  private async findOneInTransaction(tx: Prisma.TransactionClient, id: number): Promise<WarehouseDetailResponseDto> {
-    const rows = await tx.$queryRaw<WarehouseRow[]>`
-      SELECT w.id, w.name, ST_Y(w.location::geometry) AS lat, ST_X(w.location::geometry) AS lng
-      FROM warehouses w WHERE w.id = ${id}
-    `;
+  private async findOneWithClient(
+    client: Prisma.TransactionClient | PrismaService,
+    id: number,
+  ): Promise<WarehouseDetailResponseDto> {
+    const [rows, stockRows] = await Promise.all([
+      client.$queryRaw<WarehouseRow[]>`
+        SELECT w.id, w.name, ST_Y(w.location::geometry) AS lat, ST_X(w.location::geometry) AS lng
+        FROM warehouses w WHERE w.id = ${id}
+      `,
+      client.warehouse_stock.findMany({
+        where: { warehouse_id: id },
+        include: { products: true },
+      }),
+    ]);
 
-    const stockRows = await tx.warehouse_stock.findMany({
-      where: { warehouse_id: id },
-      include: { products: true },
-    });
+    if (rows.length === 0) {
+      throw new NotFoundException('Warehouse not found');
+    }
 
     return {
-      id: rows[0].id,
-      name: rows[0].name,
-      location: { lat: rows[0].lat, lng: rows[0].lng },
-      stock: stockRows.map((s) => ({
-        product: { id: s.products.id, name: s.products.name },
-        quantity: s.quantity,
-      })),
+      ...toWarehouseBase(rows[0]),
+      stock: stockRows.map((s) => toStockItem(s)),
     };
   }
 }

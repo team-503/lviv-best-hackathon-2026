@@ -3,7 +3,8 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { AuthLevel } from '../../common/enums/auth-level.enum';
 import { AuthService } from '../auth.service';
-import { AUTH_LEVEL_KEY, type AuthMetadata } from '../decorators/auth.decorator';
+import { AUTH_LEVEL_KEY } from '../decorators/auth.decorator';
+import type { AuthMetadata } from '../types/auth-metadata.type';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -49,11 +50,12 @@ export class AuthGuard implements CanActivate {
     // read or write — check resource permissions
     if (request.user.role === 'admin') return true;
 
-    const permissions = await this.authService.getUserPermissions(request.user.id);
-    const resourceId = request.params.id;
-    const entry = permissions.find((p) => p.resource_type === meta.resource && String(p.resource_id) === resourceId);
+    const resourceId = Number(request.params.id);
+    const entry = await this.authService.getUserPermission(request.user.id, meta.resource, resourceId);
     if (!entry || !entry.permissions.includes(meta.level)) {
-      throw new ForbiddenException('Insufficient permissions for this resource');
+      throw new ForbiddenException(
+        `Insufficient permissions for this resource. User permissions: ${entry?.permissions.join(', ')}`,
+      );
     }
 
     return true;

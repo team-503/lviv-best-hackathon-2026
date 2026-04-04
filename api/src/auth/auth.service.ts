@@ -1,6 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import jwt from 'jsonwebtoken';
+import type { ResourceType } from '../common/enums/resource-type.enum';
 import { PrismaService } from '../prisma/prisma.service';
+import type { UserProfile } from './types/user-profile.type';
 
 @Injectable()
 export class AuthService {
@@ -21,8 +23,7 @@ export class AuthService {
     }
   }
 
-  // TODO: fix inline type
-  async getProfile(userId: string): Promise<{ role: string; email: string | null }> {
+  async getProfile(userId: string): Promise<UserProfile> {
     const profile = await this.prisma.profiles.findUnique({
       where: { id: userId },
       select: { role: true, email: true },
@@ -35,9 +36,9 @@ export class AuthService {
     return profile;
   }
 
-  async getUserPermissions(userId: string) {
-    return this.prisma.user_permissions.findMany({
-      where: { user_id: userId },
+  async getUserPermission(userId: string, resourceType?: ResourceType, resourceId?: number) {
+    return this.prisma.user_permissions.findFirst({
+      where: { user_id: userId, resource_type: resourceType, resource_id: resourceId },
     });
   }
 }

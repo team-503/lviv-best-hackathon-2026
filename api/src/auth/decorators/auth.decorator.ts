@@ -4,13 +4,8 @@ import { AuthLevel } from '../../common/enums/auth-level.enum';
 import { PermissionLevel } from '../../common/enums/permission-level.enum';
 import { ResourceType } from '../../common/enums/resource-type.enum';
 import { getPermissionDescription } from '../auth.helper';
-
-type CombinedAuthLevel = AuthLevel | PermissionLevel;
-
-export interface AuthMetadata {
-  level: CombinedAuthLevel;
-  resource?: ResourceType;
-}
+import type { AuthMetadata } from '../types/auth-metadata.type';
+import type { CombinedAuthLevel } from '../types/combined-auth-level.type';
 
 export const AUTH_LEVEL_KEY = 'auth:level';
 
