@@ -7,8 +7,8 @@ import { SimulationStatus } from '../common/enums/simulation-status.enum';
 import { StopAction } from '../common/enums/stop-action.enum';
 import { STANDARD_CRITICALITIES, URGENT_CRITICALITIES } from '../delivery-plans/constants';
 import { toPlanWithRoutes } from '../delivery-plans/delivery-plans.helper';
+import { DeliveryPlansService } from '../delivery-plans/delivery-plans.service';
 import type { PlanWithRoutesResponseDto } from '../delivery-plans/dto/response/plan-with-routes.response.dto';
-import type { PlanRouteStopRow } from '../delivery-plans/types/plan-route-stop-row.type';
 import { PrismaService } from '../prisma/prisma.service';
 import type { SimulationAdvanceResponseDto } from './dto/response/simulation-advance.response.dto';
 import type { SimulationStatusResponseDto } from './dto/response/simulation-status.response.dto';
@@ -17,20 +17,26 @@ import type { SimulationState } from './types/simulation-state.type';
 
 @Injectable()
 export class SimulationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly deliveryPlansService: DeliveryPlansService,
+  ) {}
 
   async getStatus(): Promise<SimulationStatusResponseDto> {
     const state = await this.loadState();
-    return { status: state.status as SimulationStatus, day: state.day };
+    return { status: state.status, day: state.day };
   }
 
   async advance(): Promise<SimulationAdvanceResponseDto> {
-    const row = await this.loadState();
-    const state: SimulationState = { status: row.status as SimulationStatus, day: row.day };
+    const state = await this.loadState();
     const transition = computeTransition(state);
 
-    const executedPlan: PlanWithRoutesResponseDto | null =
-      transition.planTypeToExecute !== null ? await this.executePlan(transition.planTypeToExecute) : null;
+    let executedPlan: PlanWithRoutesResponseDto | null = null;
+
+    if (transition.planTypeToExecute !== null) {
+      executedPlan = await this.executePlan(transition.planTypeToExecute);
+    }
+
     const newDay = transition.incrementDay ? state.day + 1 : state.day;
 
     await this.prisma.simulation_state.update({
@@ -46,9 +52,12 @@ export class SimulationService {
     };
   }
 
-  private async loadState(): Promise<{ status: string; day: number }> {
+  private async loadState(): Promise<SimulationState> {
     const row = await this.prisma.simulation_state.findUnique({ where: { id: 1 } });
-    return row ?? { status: SimulationStatus.Idle, day: 1 };
+    return {
+      status: (row?.status as SimulationStatus) ?? SimulationStatus.Idle,
+      day: row?.day ?? 1,
+    };
   }
 
   private async executePlan(planType: PlanType): Promise<PlanWithRoutesResponseDto> {
@@ -64,14 +73,8 @@ export class SimulationService {
         throw new BadRequestException(`No draft ${planType} plan available to execute`);
       }
 
-      await tx.delivery_plans.update({
-        where: { id: plan.id },
-        data: { status: PlanStatus.Executing },
-      });
-
       const stops = await tx.route_stops.findMany({
         where: { plan_routes: { plan_id: plan.id } },
-        include: { plan_routes: true },
       });
 
       for (const stop of stops) {
@@ -127,30 +130,7 @@ export class SimulationService {
         data: { status: RequestStatus.Completed },
       });
 
-      const rows = await tx.$queryRaw<PlanRouteStopRow[]>`
-        SELECT
-          pr.id AS route_id,
-          pr.vehicle_number,
-          rs.id AS stop_id,
-          rs.stop_order,
-          rs.location_type::text,
-          rs.warehouse_id,
-          rs.point_id,
-          rs.product_id,
-          rs.quantity,
-          rs.action::text,
-          COALESCE(w.name, pt.name) AS location_name,
-          COALESCE(ST_Y(w.location::geometry), ST_Y(pt.location::geometry)) AS lat,
-          COALESCE(ST_X(w.location::geometry), ST_X(pt.location::geometry)) AS lng,
-          p.name AS product_name
-        FROM plan_routes pr
-        JOIN route_stops rs ON rs.route_id = pr.id
-        LEFT JOIN warehouses w ON rs.location_type = 'warehouse' AND w.id = rs.warehouse_id
-        LEFT JOIN points pt ON rs.location_type = 'point' AND pt.id = rs.point_id
-        JOIN products p ON p.id = rs.product_id
-        WHERE pr.plan_id = ${plan.id}
-        ORDER BY pr.vehicle_number, rs.stop_order
-      `;
+      const rows = await this.deliveryPlansService.fetchPlanRouteStops(plan.id);
 
       return toPlanWithRoutes({ id: plan.id, type: plan.type, status: PlanStatus.Completed, created_at: plan.created_at }, rows);
     });

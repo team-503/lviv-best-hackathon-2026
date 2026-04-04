@@ -334,7 +334,7 @@ export class DeliveryPlansService {
     return toPlanWithRoutes({ id: plan.id, type: plan.type, status: plan.status, created_at: plan.created_at }, rows);
   }
 
-  private async fetchPlanRouteStops(planId: number): Promise<PlanRouteStopRow[]> {
+  async fetchPlanRouteStops(planId: number): Promise<PlanRouteStopRow[]> {
     return this.prisma.$queryRaw<PlanRouteStopRow[]>`
       SELECT
         pr.id AS route_id,
