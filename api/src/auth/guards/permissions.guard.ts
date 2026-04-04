@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { AuthService } from '../auth.service';
 import type { AuthenticatedRequest } from '../auth.types';
 import type { RequiredPermission } from '../decorators';
-import { PERMISSION_KEY } from '../decorators';
+import { REQUIRE_PERMISSION_KEY } from '../decorators';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -13,7 +13,7 @@ export class PermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.getAllAndOverride<RequiredPermission | undefined>(PERMISSION_KEY, [
+    const required = this.reflector.getAllAndOverride<RequiredPermission | undefined>(REQUIRE_PERMISSION_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
