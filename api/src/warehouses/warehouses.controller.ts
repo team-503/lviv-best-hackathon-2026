@@ -1,7 +1,8 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Put } from '@nestjs/common';
-import { ApiBearerAuth, ApiNoContentResponse, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiNoContentResponse, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { RequestUser } from '../auth/auth.types';
-import { Auth, CurrentUser } from '../auth/decorators';
+import { Auth } from '../auth/decorators/auth.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthLevel } from '../common/enums/auth-level.enum';
 import { PermissionLevel } from '../common/enums/permission-level.enum';
 import { ResourceType } from '../common/enums/resource-type.enum';
@@ -15,7 +16,6 @@ import { WarehouseResponseDto } from './dto/response/warehouse.response.dto';
 import { WarehousesService } from './warehouses.service';
 
 @ApiTags('warehouses')
-@ApiBearerAuth()
 @Controller('warehouses')
 @Auth()
 export class WarehousesController {
@@ -30,7 +30,7 @@ export class WarehousesController {
 
   @Get(':id')
   @Auth(PermissionLevel.Read, ResourceType.Warehouse)
-  @ApiOperation({ summary: 'Get warehouse details with stock' })
+  @ApiOperation({ summary: 'Get warehouse details with stock (read)' })
   @ApiResponse({ status: 200, description: 'Warehouse details including stock', type: WarehouseDetailResponseDto })
   @ApiNotFoundResponse({ description: 'Warehouse not found' })
   findOne(@Param('id', ParseIntPipe) id: number): Promise<WarehouseDetailResponseDto> {
@@ -39,7 +39,7 @@ export class WarehousesController {
 
   @Patch(':id/stock')
   @Auth(PermissionLevel.Write, ResourceType.Warehouse)
-  @ApiOperation({ summary: 'Update warehouse stock quantities' })
+  @ApiOperation({ summary: 'Update warehouse stock quantities (read, write)' })
   @ApiResponse({ status: 200, description: 'Number of updated stock items', type: StockUpdatedResponseDto })
   updateStock(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStockDto): Promise<StockUpdatedResponseDto> {
     return this.warehousesService.updateStock(id, dto.items);

@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { AuthLevel } from '../../common/enums/auth-level.enum';
 import { AuthService } from '../auth.service';
-import { AUTH_LEVEL_KEY, type AuthMetadata } from '../decorators';
+import { AUTH_LEVEL_KEY, type AuthMetadata } from '../decorators/auth.decorator';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -22,14 +22,14 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const authHeader = request.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('[Auth] Missing or invalid Authorization header');
+      throw new UnauthorizedException('Missing or invalid Authorization header');
     }
 
     const token = authHeader.slice(7);
     const payload = this.authService.verifyToken(token);
     const sub = payload.sub;
     if (!sub || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sub)) {
-      throw new UnauthorizedException('[Auth] Invalid token: missing or malformed user ID');
+      throw new UnauthorizedException('Invalid auth token: missing or malformed user ID');
     }
 
     const profile = await this.authService.getProfile(sub);
@@ -42,7 +42,7 @@ export class AuthGuard implements CanActivate {
     if (meta.level === AuthLevel.Authenticated) return true;
     if (meta.level === AuthLevel.Admin) {
       if (request.user.role !== 'admin') {
-        throw new ForbiddenException('[Auth] Admin access required');
+        throw new ForbiddenException('Admin access required');
       }
       return true;
     }
@@ -53,7 +53,7 @@ export class AuthGuard implements CanActivate {
     const resourceId = request.params.id;
     const entry = permissions.find((p) => p.resource_type === meta.resource && String(p.resource_id) === resourceId);
     if (!entry || !entry.permissions.includes(meta.level)) {
-      throw new ForbiddenException('[Auth] Insufficient permissions for this resource');
+      throw new ForbiddenException('Insufficient permissions for this resource');
     }
 
     return true;
