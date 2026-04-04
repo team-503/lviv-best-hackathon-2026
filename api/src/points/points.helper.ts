@@ -1,7 +1,3 @@
-import type { delivery_requests, products } from '@prisma/client';
-import type { CriticalityLevel } from '../common/enums/criticality-level.enum';
-import type { RequestStatus } from '../common/enums/request-status.enum';
-import type { DeliveryRequestResponseDto } from './dto/response/delivery-request.response.dto';
 import type { PointListItemResponseDto } from './dto/response/point-list-item.response.dto';
 import type { PointStockItemResponseDto } from './dto/response/point-stock-item.response.dto';
 import type { PointResponseDto } from './dto/response/point.response.dto';
@@ -32,16 +28,5 @@ export function toPointStockItem(s: {
     product: { id: s.products.id, name: s.products.name },
     quantity: s.quantity,
     minThreshold: s.min_threshold,
-  };
-}
-
-export function toDeliveryRequest(r: delivery_requests & { products: products }): DeliveryRequestResponseDto {
-  return {
-    id: r.id,
-    product: { id: r.products.id, name: r.products.name },
-    quantity: r.quantity,
-    criticality: r.criticality as CriticalityLevel,
-    status: r.status as RequestStatus,
-    createdAt: r.created_at,
   };
 }
