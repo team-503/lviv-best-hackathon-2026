@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { StockItemDto } from '../common/dto/request/stock-item.dto';
+import type { StockUpdatedResponseDto } from '../common/dto/response/stock-updated.response.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateWarehouseDto } from './dto/request/create-warehouse.dto';
 import type { UpdateWarehouseDto } from './dto/request/update-warehouse.dto';
-import type { StockUpdatedResponseDto } from './dto/response/stock-updated.response.dto';
 import type { WarehouseDetailResponseDto } from './dto/response/warehouse-detail.response.dto';
 import type { WarehouseListItemResponseDto } from './dto/response/warehouse-list-item.response.dto';
 import type { WarehouseResponseDto } from './dto/response/warehouse.response.dto';

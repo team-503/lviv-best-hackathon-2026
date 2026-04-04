@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { StockUpdatedResponseDto } from '../common/dto/response/stock-updated.response.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import type { StockUpdatedResponseDto } from '../warehouses/dto/response/stock-updated.response.dto';
 import type { CreatePointDto } from './dto/request/create-point.dto';
 import type { UpdatePointStockItemDto } from './dto/request/update-point-stock-item.dto';
 import type { UpdatePointDto } from './dto/request/update-point.dto';

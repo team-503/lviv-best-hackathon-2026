@@ -40,8 +40,8 @@ export function toDeliveryRequest(r: delivery_requests & { products: products })
     id: r.id,
     product: { id: r.products.id, name: r.products.name },
     quantity: r.quantity,
-    criticality: r.criticality as unknown as CriticalityLevel,
-    status: r.status as unknown as RequestStatus,
+    criticality: r.criticality as CriticalityLevel,
+    status: r.status as RequestStatus,
     createdAt: r.created_at,
   };
 }

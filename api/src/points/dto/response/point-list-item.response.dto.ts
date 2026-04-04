@@ -1,17 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { LocationDto } from '../../../common/dto/request/location.dto';
 import { PermissionLevel } from '../../../common/enums/permission-level.enum';
+import { PointResponseDto } from './point.response.dto';
 
-export class PointListItemResponseDto {
-  @ApiProperty({ example: 1 })
-  id: number;
-
-  @ApiProperty({ example: 'Point 1' })
-  name: string;
-
-  @ApiProperty({ type: LocationDto })
-  location: LocationDto;
-
+export class PointListItemResponseDto extends PointResponseDto {
   @ApiProperty({
     enum: PermissionLevel,
     isArray: true,

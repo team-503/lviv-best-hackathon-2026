@@ -3,10 +3,10 @@ import { ApiNoContentResponse, ApiNotFoundResponse, ApiOperation, ApiResponse, A
 import type { RequestUser } from '../auth/auth.types';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { StockUpdatedResponseDto } from '../common/dto/response/stock-updated.response.dto';
 import { AuthLevel } from '../common/enums/auth-level.enum';
 import { PermissionLevel } from '../common/enums/permission-level.enum';
 import { ResourceType } from '../common/enums/resource-type.enum';
-import { StockUpdatedResponseDto } from '../warehouses/dto/response/stock-updated.response.dto';
 import { CreatePointDto } from './dto/request/create-point.dto';
 import { UpdatePointStockDto } from './dto/request/update-point-stock.dto';
 import { UpdatePointDto } from './dto/request/update-point.dto';

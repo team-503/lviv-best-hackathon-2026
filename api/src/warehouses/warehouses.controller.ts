@@ -9,7 +9,7 @@ import { ResourceType } from '../common/enums/resource-type.enum';
 import { CreateWarehouseDto } from './dto/request/create-warehouse.dto';
 import { UpdateStockDto } from './dto/request/update-stock.dto';
 import { UpdateWarehouseDto } from './dto/request/update-warehouse.dto';
-import { StockUpdatedResponseDto } from './dto/response/stock-updated.response.dto';
+import { StockUpdatedResponseDto } from '../common/dto/response/stock-updated.response.dto';
 import { WarehouseDetailResponseDto } from './dto/response/warehouse-detail.response.dto';
 import { WarehouseListItemResponseDto } from './dto/response/warehouse-list-item.response.dto';
 import { WarehouseResponseDto } from './dto/response/warehouse.response.dto';
