@@ -1,7 +1,10 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiNoContentResponse, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { RequestUser } from '../auth/auth.types';
-import { Auth, AuthLevel, AuthResource, CurrentUser } from '../auth/decorators';
+import { Auth, CurrentUser } from '../auth/decorators';
+import { AuthLevel } from '../common/enums/auth-level.enum';
+import { PermissionLevel } from '../common/enums/permission-level.enum';
+import { ResourceType } from '../common/enums/resource-type.enum';
 import { CreateWarehouseDto } from './dto/request/create-warehouse.dto';
 import { UpdateStockDto } from './dto/request/update-stock.dto';
 import { UpdateWarehouseDto } from './dto/request/update-warehouse.dto';
@@ -26,7 +29,7 @@ export class WarehousesController {
   }
 
   @Get(':id')
-  @Auth(AuthLevel.Read, AuthResource.Warehouse)
+  @Auth(PermissionLevel.Read, ResourceType.Warehouse)
   @ApiOperation({ summary: 'Get warehouse details with stock' })
   @ApiResponse({ status: 200, description: 'Warehouse details including stock', type: WarehouseDetailResponseDto })
   @ApiNotFoundResponse({ description: 'Warehouse not found' })
@@ -35,7 +38,7 @@ export class WarehousesController {
   }
 
   @Patch(':id/stock')
-  @Auth(AuthLevel.Write, AuthResource.Warehouse)
+  @Auth(PermissionLevel.Write, ResourceType.Warehouse)
   @ApiOperation({ summary: 'Update warehouse stock quantities' })
   @ApiResponse({ status: 200, description: 'Number of updated stock items', type: StockUpdatedResponseDto })
   updateStock(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStockDto): Promise<StockUpdatedResponseDto> {

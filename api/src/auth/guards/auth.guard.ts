@@ -1,8 +1,9 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
+import { AuthLevel } from '../../common/enums/auth-level.enum';
 import { AuthService } from '../auth.service';
-import { AUTH_LEVEL_KEY, AuthLevel, type AuthMetadata } from '../decorators';
+import { AUTH_LEVEL_KEY, type AuthMetadata } from '../decorators';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
