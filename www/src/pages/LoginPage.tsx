@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useAppDispatch } from '@/store/hooks';
-import { loginSuccess, findUserByEmail } from '@/store/slices/authSlice';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Truck } from 'lucide-react';
 
 export function LoginPage() {
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
@@ -17,19 +15,21 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
-    const stored = findUserByEmail(email);
-    if (!stored || stored.passwordHash !== password) {
-      setError('Невірний email або пароль');
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+      setError(authError.message);
+      setLoading(false);
       return;
     }
 
-    const { passwordHash: _, ...user } = stored;
-    dispatch(loginSuccess(user));
     navigate(from, { replace: true });
   }
 
@@ -76,12 +76,12 @@ export function LoginPage() {
                   required
                 />
               </div>
-              {error && (
-                <p className="text-xs text-destructive">{error}</p>
-              )}
+              {error && <p className="text-xs text-destructive">{error}</p>}
             </CardContent>
             <CardFooter className="flex flex-col gap-3">
-              <Button type="submit" className="w-full">Увійти</Button>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Завантаження...' : 'Увійти'}
+              </Button>
               <p className="text-xs text-muted-foreground text-center">
                 Немає акаунту?{' '}
                 <Link to="/register" className="text-primary underline-offset-4 hover:underline">
@@ -91,10 +91,6 @@ export function LoginPage() {
             </CardFooter>
           </form>
         </Card>
-
-        <p className="text-center text-xs text-muted-foreground">
-          Тестовий акаунт: <span className="font-mono">admin@logiflow.ua</span> / <span className="font-mono">admin123</span>
-        </p>
       </div>
     </div>
   );
