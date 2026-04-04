@@ -1,4 +1,13 @@
-import type { MapPoint, DeliveryRequest, Vehicle, CriticalityLevel } from '@/data/mockData';
+import type { CriticalityLevel, DeliveryRequest, Vehicle } from '@/data/mockData';
+
+/** Minimal map point used by the simulation algorithm (lat/lng + type). */
+export interface AlgoMapPoint {
+  id: string;
+  name: string;
+  type: 'warehouse' | 'delivery' | 'point';
+  lat: number;
+  lng: number;
+}
 
 // ─── Haversine distance (km) ───
 export function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -6,9 +15,7 @@ export function haversine(lat1: number, lng1: number, lat2: number, lng2: number
   const toRad = (v: number) => (v * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -43,12 +50,7 @@ export interface SimRoute {
 const ROUTE_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 // ─── Nearest-neighbor TSP ───
-function nearestNeighborOrder(
-  stops: SimStop[],
-  startLat: number,
-  startLng: number,
-  points: MapPoint[],
-): SimStop[] {
+function nearestNeighborOrder(stops: SimStop[], startLat: number, startLng: number, points: AlgoMapPoint[]): SimStop[] {
   if (stops.length <= 1) return stops;
   const remaining = [...stops];
   const ordered: SimStop[] = [];
@@ -79,11 +81,7 @@ function nearestNeighborOrder(
 }
 
 // ─── Main algorithm ───
-export function generateRoutes(
-  requests: DeliveryRequest[],
-  points: MapPoint[],
-  vehicles: Vehicle[],
-): SimRoute[] {
+export function generateRoutes(requests: DeliveryRequest[], points: AlgoMapPoint[], vehicles: Vehicle[]): SimRoute[] {
   if (requests.length === 0 || vehicles.length === 0) return [];
 
   // 1. Sort requests: criticality desc, then quantity desc
@@ -107,47 +105,21 @@ export function generateRoutes(
     };
   });
 
-  // 3. Greedy assignment
+  // 3. Greedy assignment — pick nearest warehouse by distance
   for (const req of sorted) {
     const dest = points.find((p) => p.id === req.pointId);
     if (!dest) continue;
 
-    // Find nearest warehouse that has this product
-    const warehouses = points.filter(
-      (p) =>
-        p.type === 'warehouse' && p.stock.some((s) => s.productId === req.productId),
-    );
+    // Find nearest warehouse to destination
+    const warehouses = points.filter((p) => p.type === 'warehouse');
+    if (warehouses.length === 0) continue;
 
-    let sourceWarehouseId: string | null = null;
-
-    if (warehouses.length > 0) {
-      // nearest warehouse to destination point
-      sourceWarehouseId = warehouses.reduce((bestId, wh) => {
-        const bestWh = points.find((p) => p.id === bestId)!;
-        const dBest = haversine(dest.lat, dest.lng, bestWh.lat, bestWh.lng);
-        const dCur = haversine(dest.lat, dest.lng, wh.lat, wh.lng);
-        return dCur < dBest ? wh.id : bestId;
-      }, warehouses[0].id);
-    } else {
-      // Fallback: delivery point with sufficient surplus
-      const surplus = points.filter((p) => {
-        if (p.id === req.pointId || p.type === 'warehouse') return false;
-        const stock = p.stock.find((s) => s.productId === req.productId);
-        if (!stock) return false;
-        const threshold = stock.minThreshold ?? 0;
-        return stock.quantity - req.quantity >= threshold;
-      });
-      if (surplus.length === 0) continue;
-      // pick point with most surplus
-      const best = surplus.reduce((a, b) => {
-        const sa = a.stock.find((s) => s.productId === req.productId)!;
-        const sb = b.stock.find((s) => s.productId === req.productId)!;
-        return (sb.quantity - (sb.minThreshold ?? 0)) > (sa.quantity - (sa.minThreshold ?? 0)) ? b : a;
-      });
-      sourceWarehouseId = best.id;
-    }
-
-    if (!sourceWarehouseId) continue;
+    const sourceWarehouseId = warehouses.reduce((bestId, wh) => {
+      const bestWh = points.find((p) => p.id === bestId)!;
+      const dBest = haversine(dest.lat, dest.lng, bestWh.lat, bestWh.lng);
+      const dCur = haversine(dest.lat, dest.lng, wh.lat, wh.lng);
+      return dCur < dBest ? wh.id : bestId;
+    }, warehouses[0].id);
 
     // Find vehicle with capacity closest to destination
     const eligible = vehicleState.filter((v) => v.capacity - v.used >= req.quantity);
