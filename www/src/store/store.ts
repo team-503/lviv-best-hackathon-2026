@@ -5,6 +5,7 @@ import planReducer from './slices/planSlice';
 import uiReducer from './slices/uiSlice';
 import simulationReducer from './slices/simulationSlice';
 import authReducer from './slices/authSlice';
+import productsReducer from './slices/productsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     ui: uiReducer,
     simulation: simulationReducer,
     auth: authReducer,
+    products: productsReducer,
   },
 });
 

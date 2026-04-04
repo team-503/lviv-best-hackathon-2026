@@ -2,9 +2,10 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setUser } from '@/store/slices/authSlice';
+import { setUser, fetchProfile } from '@/store/slices/authSlice';
+import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
+import { fetchProducts } from '@/store/slices/productsSlice';
 import { supabase } from '@/lib/supabase';
-import type { UserRole } from '@/data/mockData';
 import { MapPage } from '@/pages/MapPage';
 import { PointPage } from '@/pages/PointPage';
 import { WarehousePage } from '@/pages/WarehousePage';
@@ -27,21 +28,20 @@ export default function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        const meta = session.user.user_metadata;
-        dispatch(
-          setUser({
-            id: session.user.id,
-            name: (meta.name as string) ?? session.user.email ?? '',
-            email: session.user.email ?? '',
-            role: (meta.role as UserRole) ?? 'delivery',
-          }),
-        );
+        dispatch(fetchProfile());
       } else {
         dispatch(setUser(null));
       }
     });
     return () => subscription.unsubscribe();
   }, [dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchMapPoints());
+      dispatch(fetchProducts());
+    }
+  }, [isAuthenticated, dispatch]);
 
   return (
     <TooltipProvider>

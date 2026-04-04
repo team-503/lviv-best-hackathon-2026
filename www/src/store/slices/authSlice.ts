@@ -1,11 +1,11 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { UserRole } from '@/data/mockData';
+import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
+import { getMyProfile } from '@/lib/api/profiles';
 
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  role: string;
 }
 
 interface AuthState {
@@ -20,6 +20,10 @@ const initialState: AuthState = {
   loading: true,
 };
 
+export const fetchProfile = createAsyncThunk('auth/fetchProfile', async () => {
+  return getMyProfile();
+});
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -32,19 +36,29 @@ const authSlice = createSlice({
     setLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;
     },
-    // Kept for backwards compat with components that dispatch these
-    loginSuccess(state, action: PayloadAction<AuthUser>) {
-      state.user = action.payload;
-      state.isAuthenticated = true;
-      state.loading = false;
-    },
     logout(state) {
       state.user = null;
       state.isAuthenticated = false;
       state.loading = false;
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase(fetchProfile.fulfilled, (state, action) => {
+      const p = action.payload;
+      state.user = {
+        id: p.id,
+        name: p.displayName ?? p.email ?? '',
+        email: p.email ?? '',
+        role: p.role,
+      };
+      state.isAuthenticated = true;
+      state.loading = false;
+    });
+    builder.addCase(fetchProfile.rejected, (state) => {
+      state.loading = false;
+    });
+  },
 });
 
-export const { setUser, setLoading, loginSuccess, logout } = authSlice.actions;
+export const { setUser, setLoading, logout } = authSlice.actions;
 export default authSlice.reducer;
