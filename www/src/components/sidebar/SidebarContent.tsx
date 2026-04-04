@@ -1,15 +1,12 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { CriticalityBadge } from '@/components/ui/criticality-badge';
-import type { MapPoint } from '@/types/api';
-import { MapPin, Warehouse, Package, Route, CheckCircle2, Clock, ExternalLink } from 'lucide-react';
+import type { MapPoint, PlanDetailResponseDto, PlanRouteResponseDto } from '@/types/api';
+import { MapPin, Warehouse, Route, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleRoute, setAllRoutes, clearRoutes } from '@/store/slices/uiSlice';
-import type { CriticalityLevel } from '@/data/mockData';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 
 // ─── Points List ───
@@ -136,70 +133,21 @@ function PointsTab({
   );
 }
 
-// ─── Requests Tab ───
-const CRITICALITY_ORDER: CriticalityLevel[] = ['urgent', 'critical', 'high', 'medium', 'normal'];
-
-function RequestsTab() {
-  const requests = useAppSelector((s) => s.requests.requests);
-  const points = useAppSelector((s) => s.mapPoints.points);
-  const products = useAppSelector((s) => s.products.products);
-  const sorted = [...requests].sort(
-    (a, b) =>
-      CRITICALITY_ORDER.indexOf(a.criticality as CriticalityLevel) - CRITICALITY_ORDER.indexOf(b.criticality as CriticalityLevel),
-  );
-
-  const statusIcon = {
-    pending: <Clock className="size-3 text-muted-foreground" />,
-    planned: <CheckCircle2 className="size-3 text-primary" />,
-    completed: <CheckCircle2 className="size-3 text-emerald-500" />,
-  };
-
-  const statusLabel: Record<string, string> = { pending: 'Очікує', planned: 'Заплановано', completed: 'Виконано' };
-
-  return (
-    <div className="flex flex-col gap-2">
-      {sorted.map((r) => {
-        const point = points.find((p) => String(p.id) === r.pointId);
-        const product = products.find((p) => String(p.id) === r.productId);
-        return (
-          <div key={r.id} className="rounded-lg border bg-card p-3">
-            <div className="flex items-start justify-between gap-2 mb-1.5">
-              <p className="text-sm font-medium leading-tight">{point?.name}</p>
-              <CriticalityBadge level={r.criticality as CriticalityLevel} />
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-              <Package className="size-3" />
-              <span>
-                {product?.name} — {r.quantity.toLocaleString()}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {statusIcon[r.status as keyof typeof statusIcon]}
-              <span>{statusLabel[r.status]}</span>
-              <span className="ml-auto">
-                {new Date(r.createdAt).toLocaleTimeString('uk-UA', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Plan Tab ───
-function PlanTab() {
+const PLAN_STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
+  draft: { label: 'Чернетка', classes: 'bg-muted text-muted-foreground' },
+  executing: { label: 'Виконується', classes: 'bg-primary/15 text-primary' },
+  completed: { label: 'Виконано', classes: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
+};
+
+function PlanSection({ plan }: { plan: PlanDetailResponseDto }) {
   const dispatch = useAppDispatch();
   const activeRouteIds = useAppSelector((s) => s.ui.activeRouteIds);
-  const { plan, vehicles } = useAppSelector((s) => s.plan);
-  const requests = useAppSelector((s) => s.requests.requests);
-  const points = useAppSelector((s) => s.mapPoints.points);
-  const products = useAppSelector((s) => s.products.products);
 
-  const allIds = plan.routes.map((r) => r.vehicleId);
+  const typeLabel = plan.type === 'urgent' ? 'Терміновий' : 'Стандартний';
+  const status = PLAN_STATUS_CONFIG[plan.status] ?? PLAN_STATUS_CONFIG.draft;
+
+  const allIds = plan.routes.map((r) => String(r.id));
   const allExpanded = allIds.length > 0 && allIds.every((id) => activeRouteIds.includes(id));
 
   function toggleAll() {
@@ -210,21 +158,12 @@ function PlanTab() {
     }
   }
 
-  const statusConfig = {
-    draft: { label: 'Чернетка', classes: 'bg-muted text-muted-foreground' },
-    active: { label: 'Активний', classes: 'bg-primary/15 text-primary' },
-    completed: { label: 'Виконано', classes: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
-  };
-  const status = statusConfig[plan.status];
-
   return (
     <div className="flex flex-col gap-3">
       <Card>
         <CardHeader className="pb-2 pt-3 px-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">
-              План на {new Date(plan.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' })}
-            </CardTitle>
+            <CardTitle className="text-sm">{typeLabel} план</CardTitle>
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${status.classes}`}>{status.label}</span>
           </div>
         </CardHeader>
@@ -257,64 +196,77 @@ function PlanTab() {
       </Card>
 
       <div className="flex flex-col gap-2">
-        {plan.routes.map((route) => {
-          const vehicle = vehicles.find((v) => v.id === route.vehicleId);
-          const isExpanded = activeRouteIds.includes(route.vehicleId);
-
-          return (
-            <div key={route.vehicleId} className="rounded-lg border bg-card overflow-hidden">
-              <button
-                className={`w-full flex items-center gap-2 p-3 hover:bg-muted/50 transition-colors text-left ${isExpanded ? 'bg-muted/40' : ''}`}
-                onClick={() => dispatch(toggleRoute(route.vehicleId))}
-              >
-                <div
-                  className={`flex size-6 shrink-0 items-center justify-center rounded-md ${isExpanded ? 'bg-primary' : 'bg-primary/15'}`}
-                >
-                  <Route className={`size-3.5 ${isExpanded ? 'text-primary-foreground' : 'text-primary'}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{vehicle?.name}</p>
-                  <p className="text-xs text-muted-foreground">{route.stops.length} зупинок</p>
-                </div>
-                <span className="text-xs text-muted-foreground">{isExpanded ? '▲' : '▼'}</span>
-              </button>
-
-              {isExpanded && (
-                <div className="border-t px-3 pb-3 pt-2 flex flex-col gap-2">
-                  {route.stops.map((stop, idx) => {
-                    const point = points.find((p) => String(p.id) === stop.pointId);
-                    return (
-                      <div key={stop.pointId} className="flex items-start gap-2">
-                        <div className="flex flex-col items-center">
-                          <div className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                            {idx + 1}
-                          </div>
-                          {idx < route.stops.length - 1 && <div className="w-px flex-1 bg-border mt-1 min-h-[12px]" />}
-                        </div>
-                        <div className="flex-1 min-w-0 pb-1">
-                          <p className="text-xs font-medium">{point?.name}</p>
-                          <div className="flex flex-col gap-0.5 mt-0.5">
-                            {stop.requestIds.map((rid) => {
-                              const req = requests.find((r) => r.id === rid);
-                              if (!req) return null;
-                              const product = products.find((p) => String(p.id) === req.productId);
-                              return (
-                                <p key={rid} className="text-xs text-muted-foreground">
-                                  {product?.name}: {req.quantity}
-                                </p>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {plan.routes.map((route) => (
+          <RouteCard key={route.id} route={route} />
+        ))}
       </div>
+    </div>
+  );
+}
+
+function RouteCard({ route }: { route: PlanRouteResponseDto }) {
+  const dispatch = useAppDispatch();
+  const activeRouteIds = useAppSelector((s) => s.ui.activeRouteIds);
+  const routeKey = String(route.id);
+  const isExpanded = activeRouteIds.includes(routeKey);
+
+  return (
+    <div className="rounded-lg border bg-card overflow-hidden">
+      <button
+        className={`w-full flex items-center gap-2 p-3 hover:bg-muted/50 transition-colors text-left ${isExpanded ? 'bg-muted/40' : ''}`}
+        onClick={() => dispatch(toggleRoute(routeKey))}
+      >
+        <div
+          className={`flex size-6 shrink-0 items-center justify-center rounded-md ${isExpanded ? 'bg-primary' : 'bg-primary/15'}`}
+        >
+          <Route className={`size-3.5 ${isExpanded ? 'text-primary-foreground' : 'text-primary'}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">Машина #{route.vehicleNumber}</p>
+          <p className="text-xs text-muted-foreground">{route.stops.length} зупинок</p>
+        </div>
+        <span className="text-xs text-muted-foreground">{isExpanded ? '▲' : '▼'}</span>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t px-3 pb-3 pt-2 flex flex-col gap-2">
+          {route.stops.map((stop, idx) => (
+            <div key={stop.order} className="flex items-start gap-2">
+              <div className="flex flex-col items-center">
+                <div className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                  {stop.locationType === 'warehouse' ? '🏭' : stop.order}
+                </div>
+                {idx < route.stops.length - 1 && <div className="w-px flex-1 bg-border mt-1 min-h-[12px]" />}
+              </div>
+              <div className="flex-1 min-w-0 pb-1">
+                <p className="text-xs font-medium">{stop.location.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {stop.action === 'pickup' ? 'Забрати' : 'Доставити'}: {stop.product.name} — {stop.quantity}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlanTab() {
+  const { urgent, standard, loading } = useAppSelector((s) => s.plan);
+
+  if (loading) {
+    return <p className="text-sm text-muted-foreground text-center py-4">Завантаження...</p>;
+  }
+
+  if (!urgent && !standard) {
+    return <p className="text-sm text-muted-foreground text-center py-4">Немає активних планів</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {urgent && <PlanSection plan={urgent} />}
+      {standard && <PlanSection plan={standard} />}
     </div>
   );
 }
@@ -328,40 +280,26 @@ interface SidebarContentProps {
 
 export function SidebarContent({ onSelectPoint, onOpenPoint, onHoverPoint }: SidebarContentProps) {
   const points = useAppSelector((s) => s.mapPoints.points);
-  const requests = useAppSelector((s) => s.requests.requests);
-  const urgentCount = requests.filter((r) => r.criticality === 'urgent' || r.criticality === 'critical').length;
 
   return (
     <div className="flex flex-col h-full">
       {/* Stats strip */}
-      <div className="grid grid-cols-3 gap-2 p-3 border-b shrink-0">
+      <div className="grid grid-cols-2 gap-2 p-3 border-b shrink-0">
         <div className="text-center">
           <p className="text-lg font-bold text-primary">{points.filter((p) => p.type === 'warehouse').length}</p>
           <p className="text-xs text-muted-foreground">Склади</p>
         </div>
-        <div className="text-center border-x">
+        <div className="text-center border-l">
           <p className="text-lg font-bold text-primary">{points.filter((p) => p.type === 'point').length}</p>
           <p className="text-xs text-muted-foreground">Точки</p>
-        </div>
-        <div className="text-center">
-          <p className={`text-lg font-bold ${urgentCount > 0 ? 'text-destructive' : 'text-primary'}`}>{urgentCount}</p>
-          <p className="text-xs text-muted-foreground">Критичних</p>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue="points" className="flex flex-col flex-1 min-h-0">
-        <TabsList className="grid grid-cols-3 mx-3 mt-3 shrink-0">
+        <TabsList className="grid grid-cols-2 mx-3 mt-3 shrink-0">
           <TabsTrigger value="points" className="text-xs">
             Точки
-          </TabsTrigger>
-          <TabsTrigger value="requests" className="text-xs">
-            Запити
-            {requests.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs px-1 py-0 h-4">
-                {requests.length}
-              </Badge>
-            )}
           </TabsTrigger>
           <TabsTrigger value="plan" className="text-xs">
             План
@@ -372,14 +310,6 @@ export function SidebarContent({ onSelectPoint, onOpenPoint, onHoverPoint }: Sid
           <ScrollArea className="h-full">
             <div className="p-3">
               <PointsTab onSelectPoint={onSelectPoint} onOpenPoint={onOpenPoint} onHoverPoint={onHoverPoint} />
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="requests" className="flex-1 min-h-0 mt-0">
-          <ScrollArea className="h-full">
-            <div className="p-3">
-              <RequestsTab />
             </div>
           </ScrollArea>
         </TabsContent>

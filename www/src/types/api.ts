@@ -108,3 +108,61 @@ export interface MapPoint {
   lng: number;
   permissions: string[] | null;
 }
+
+/* ── Delivery Plans ── */
+
+export interface StopLocationDto {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export interface RouteStopResponseDto {
+  order: number;
+  locationType: 'warehouse' | 'point';
+  location: StopLocationDto;
+  product: { id: number; name: string };
+  quantity: number;
+  action: 'pickup' | 'deliver';
+}
+
+export interface PlanRouteResponseDto {
+  id: number;
+  vehicleNumber: number;
+  stops: RouteStopResponseDto[];
+}
+
+export interface PlanDetailResponseDto {
+  id: number;
+  type: 'urgent' | 'standard';
+  status: 'draft' | 'executing' | 'completed';
+  createdAt?: string;
+  routes: PlanRouteResponseDto[];
+}
+
+export interface CurrentPlansResponseDto {
+  urgent: PlanDetailResponseDto | null;
+  standard: PlanDetailResponseDto | null;
+}
+
+export interface PlanListItemResponseDto {
+  id: number;
+  type: 'urgent' | 'standard';
+  status: string;
+  createdAt: string;
+}
+
+/* ── Simulation ── */
+
+export interface SimulationStatusResponseDto {
+  status: 'idle' | 'stage1' | 'stage2';
+  day: number;
+}
+
+export interface SimulationAdvanceResponseDto {
+  previousStatus: string;
+  newStatus: string;
+  day: number;
+  executedPlan: PlanDetailResponseDto | null;
+}

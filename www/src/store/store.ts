@@ -1,6 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
 import mapPointsReducer from './slices/mapPointsSlice';
-import requestsReducer from './slices/requestsSlice';
 import planReducer from './slices/planSlice';
 import uiReducer from './slices/uiSlice';
 import simulationReducer from './slices/simulationSlice';
@@ -10,7 +9,6 @@ import productsReducer from './slices/productsSlice';
 export const store = configureStore({
   reducer: {
     mapPoints: mapPointsReducer,
-    requests: requestsReducer,
     plan: planReducer,
     ui: uiReducer,
     simulation: simulationReducer,

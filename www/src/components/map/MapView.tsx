@@ -1,9 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import type { MapPoint } from '@/types/api';
-import type { SimRoute } from '@/utils/algorithm';
+import type { MapPoint, PlanRouteResponseDto } from '@/types/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -19,11 +18,6 @@ L.Icon.Default.mergeOptions({
 });
 
 const ROUTE_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4'];
-
-function getVehicleColor(vehicleId: string, vehicles: { id: string }[]): string {
-  const idx = vehicles.findIndex((v) => v.id === vehicleId);
-  return ROUTE_COLORS[idx % ROUTE_COLORS.length];
-}
 
 // ─── Icons ───
 function createPointIcon(type: 'warehouse' | 'point', isHovered = false) {
@@ -156,24 +150,31 @@ function MapController({
   return null;
 }
 
-function buildRoutePolyline(route: SimRoute, points: MapPoint[]): [number, number][] {
-  const wh = points.find((p) => String(p.id) === route.warehouseId);
+/** Build polyline coordinates and stop markers from API plan routes */
+function buildApiRouteData(route: PlanRouteResponseDto, color: string) {
   const coords: [number, number][] = [];
-  if (wh) coords.push([wh.lat, wh.lng]);
+  const stops: { lat: number; lng: number; order: number; isWarehouse: boolean; color: string; key: string }[] = [];
+
   for (const stop of route.stops) {
-    const pt = points.find((p) => String(p.id) === stop.pointId);
-    if (pt) coords.push([pt.lat, pt.lng]);
+    coords.push([stop.location.lat, stop.location.lng]);
+    stops.push({
+      lat: stop.location.lat,
+      lng: stop.location.lng,
+      order: stop.order,
+      isWarehouse: stop.locationType === 'warehouse',
+      color,
+      key: `${route.id}-${stop.order}`,
+    });
   }
-  if (wh) coords.push([wh.lat, wh.lng]);
-  return coords;
+
+  return { coords, stops };
 }
 
 // ─── Main component ───
 interface MapViewProps {
   selectedPointId: number | null;
   onSelectPoint: (id: number | null) => void;
-  activeRouteIds: string[];
-  simulationRoutes?: SimRoute[];
+  planRoutes?: PlanRouteResponseDto[];
   hoveredPointId?: number | null;
   flyToTrigger?: { id: number; key: number } | null;
 }
@@ -181,42 +182,23 @@ interface MapViewProps {
 export function MapView({
   selectedPointId,
   onSelectPoint,
-  activeRouteIds,
-  simulationRoutes = [],
+  planRoutes = [],
   hoveredPointId = null,
   flyToTrigger = null,
 }: MapViewProps) {
   const center: [number, number] = [49.835, 24.02];
   const markerRefs = useRef<Record<number, L.Marker>>({});
   const points = useAppSelector((s) => s.mapPoints.points);
-  const { vehicles, plan } = useAppSelector((s) => s.plan);
 
-  const isSimulating = simulationRoutes.length > 0;
-
-  // Build plan route data for all active IDs
-  const planRoutes = activeRouteIds.flatMap((vehicleId) => {
-    const route = plan.routes.find((r) => r.vehicleId === vehicleId);
-    const vehicle = vehicles.find((v) => v.id === vehicleId);
-    const wh = vehicle ? points.find((p) => String(p.id) === vehicle.warehouseId) : null;
-    if (!route || !wh) return [];
-
-    const color = getVehicleColor(vehicleId, vehicles);
-    const coords: [number, number][] = [[wh.lat, wh.lng]];
-    const stops: { pointId: string; lat: number; lng: number; order: number; isWarehouse: boolean; color: string }[] = [
-      { pointId: String(wh.id), lat: wh.lat, lng: wh.lng, order: 0, isWarehouse: true, color },
-    ];
-
-    route.stops.forEach((stop, idx) => {
-      const pt = points.find((p) => String(p.id) === stop.pointId);
-      if (pt) {
-        coords.push([pt.lat, pt.lng]);
-        stops.push({ pointId: String(pt.id), lat: pt.lat, lng: pt.lng, order: idx + 1, isWarehouse: false, color });
-      }
-    });
-    coords.push([wh.lat, wh.lng]);
-
-    return [{ vehicleId, color, coords, stops }];
-  });
+  const routeVisuals = useMemo(
+    () =>
+      planRoutes.map((route, idx) => {
+        const color = ROUTE_COLORS[idx % ROUTE_COLORS.length];
+        const { coords, stops } = buildApiRouteData(route, color);
+        return { routeId: route.id, color, coords, stops };
+      }),
+    [planRoutes],
+  );
 
   return (
     <MapContainer center={center} zoom={13} className="h-full w-full z-0">
@@ -227,48 +209,20 @@ export function MapView({
       <MapResizer />
       <MapController flyToTrigger={flyToTrigger} points={points} markerRefs={markerRefs} />
 
-      {/* ── Simulation: all routes ── */}
-      {isSimulating &&
-        simulationRoutes.map((route) => {
-          const coords = buildRoutePolyline(route, points);
-          const wh = points.find((p) => String(p.id) === route.warehouseId);
-          return (
-            <div key={route.vehicleId}>
-              {coords.length >= 2 && (
-                <Polyline positions={coords} pathOptions={{ color: route.color, weight: 4, opacity: 0.85 }} />
-              )}
-              {wh && <Marker position={[wh.lat, wh.lng]} icon={createStopNumberIcon(0, route.color, true)} zIndexOffset={1000} />}
-              {route.stops.map((stop, idx) => {
-                const pt = points.find((p) => String(p.id) === stop.pointId);
-                if (!pt) return null;
-                return (
-                  <Marker
-                    key={`${route.vehicleId}-${stop.pointId}`}
-                    position={[pt.lat, pt.lng]}
-                    icon={createStopNumberIcon(idx + 1, route.color, false)}
-                    zIndexOffset={1000}
-                  />
-                );
-              })}
-            </div>
-          );
-        })}
-
-      {/* ── Plan tab: multiple active routes ── */}
-      {!isSimulating &&
-        planRoutes.map(({ vehicleId, color, coords, stops }) => (
-          <div key={vehicleId}>
-            {coords.length >= 2 && <Polyline positions={coords} pathOptions={{ color, weight: 4, opacity: 0.85 }} />}
-            {stops.map((stop) => (
-              <Marker
-                key={`plan-${vehicleId}-${stop.pointId}`}
-                position={[stop.lat, stop.lng]}
-                icon={createStopNumberIcon(stop.order, stop.color, stop.isWarehouse)}
-                zIndexOffset={1000}
-              />
-            ))}
-          </div>
-        ))}
+      {/* ── Plan / Simulation routes ── */}
+      {routeVisuals.map(({ routeId, color, coords, stops }) => (
+        <div key={routeId}>
+          {coords.length >= 2 && <Polyline positions={coords} pathOptions={{ color, weight: 4, opacity: 0.85 }} />}
+          {stops.map((stop) => (
+            <Marker
+              key={stop.key}
+              position={[stop.lat, stop.lng]}
+              icon={createStopNumberIcon(stop.order, stop.color, stop.isWarehouse)}
+              zIndexOffset={1000}
+            />
+          ))}
+        </div>
+      ))}
 
       {/* ── Base markers ── */}
       {points.map((point) => {

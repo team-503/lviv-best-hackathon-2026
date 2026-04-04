@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
@@ -9,9 +9,12 @@ import { SimulationBanner } from '@/components/simulation/SimulationBanner';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setSelectedPoint, setMobileSidebarOpen } from '@/store/slices/uiSlice';
+import { fetchCurrentPlans } from '@/store/slices/planSlice';
+import { fetchSimulationStatus } from '@/store/slices/simulationSlice';
 import { useSimulation } from '@/hooks/useSimulation';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Loader2 } from 'lucide-react';
+import type { PlanRouteResponseDto } from '@/types/api';
 
 export function MapPage() {
   const dispatch = useAppDispatch();
@@ -19,11 +22,18 @@ export function MapPage() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [hoveredPointId, setHoveredPointId] = useState<number | null>(null);
   const [flyToTrigger, setFlyToTrigger] = useState<{ id: number; key: number } | null>(null);
-  const { selectedPointId, activeRouteIds, mobileSidebarOpen } = useAppSelector((s) => s.ui);
+  const { selectedPointId, mobileSidebarOpen } = useAppSelector((s) => s.ui);
   const user = useAppSelector((s) => s.auth.user);
   const loading = useAppSelector((s) => s.mapPoints.loading);
   const isAdmin = user?.role === 'admin';
   const { status, activeRoutes } = useSimulation();
+  const { urgent, standard } = useAppSelector((s) => s.plan);
+
+  // Fetch plans and simulation status on mount
+  useEffect(() => {
+    dispatch(fetchCurrentPlans());
+    dispatch(fetchSimulationStatus());
+  }, [dispatch]);
 
   function handleSelectPoint(id: number) {
     dispatch(setSelectedPoint(String(id)));
@@ -40,6 +50,19 @@ export function MapPage() {
   }
 
   const simActive = status === 'stage1' || status === 'stage2';
+
+  // Determine which routes to show on the map
+  let mapRoutes: PlanRouteResponseDto[] = [];
+  if (simActive && activeRoutes.length > 0) {
+    // During simulation, show the executed plan routes
+    mapRoutes = activeRoutes;
+  } else if (!simActive) {
+    // When idle, show current plan routes (both urgent and standard)
+    const planRoutes: PlanRouteResponseDto[] = [];
+    if (urgent?.routes) planRoutes.push(...urgent.routes);
+    if (standard?.routes) planRoutes.push(...standard.routes);
+    mapRoutes = planRoutes;
+  }
 
   const selectedNumericId = selectedPointId != null ? Number(selectedPointId) : null;
 
@@ -62,8 +85,7 @@ export function MapPage() {
           <MapView
             selectedPointId={selectedNumericId}
             onSelectPoint={(id) => dispatch(setSelectedPoint(id != null ? String(id) : null))}
-            activeRouteIds={simActive ? [] : activeRouteIds}
-            simulationRoutes={simActive ? activeRoutes : []}
+            planRoutes={mapRoutes}
             hoveredPointId={hoveredPointId}
             flyToTrigger={flyToTrigger}
           />

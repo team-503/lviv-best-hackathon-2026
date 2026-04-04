@@ -1,28 +1,45 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { DELIVERY_PLAN, VEHICLES, type DeliveryPlan, type Vehicle } from '@/data/mockData';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { getCurrentPlans } from '@/lib/api/delivery-plans';
+import type { PlanDetailResponseDto } from '@/types/api';
 
 interface PlanState {
-  plan: DeliveryPlan;
-  vehicles: Vehicle[];
+  urgent: PlanDetailResponseDto | null;
+  standard: PlanDetailResponseDto | null;
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: PlanState = {
-  plan: DELIVERY_PLAN,
-  vehicles: VEHICLES,
+  urgent: null,
+  standard: null,
+  loading: false,
+  error: null,
 };
+
+export const fetchCurrentPlans = createAsyncThunk('plan/fetchCurrent', async () => {
+  return getCurrentPlans();
+});
 
 const planSlice = createSlice({
   name: 'plan',
   initialState,
-  reducers: {
-    setPlan(state, action: PayloadAction<DeliveryPlan>) {
-      state.plan = action.payload;
-    },
-    setPlanStatus(state, action: PayloadAction<DeliveryPlan['status']>) {
-      state.plan.status = action.payload;
-    },
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchCurrentPlans.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCurrentPlans.fulfilled, (state, action) => {
+        state.urgent = action.payload.urgent;
+        state.standard = action.payload.standard;
+        state.loading = false;
+      })
+      .addCase(fetchCurrentPlans.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message ?? 'Failed to fetch plans';
+      });
   },
 });
 
-export const { setPlan, setPlanStatus } = planSlice.actions;
 export default planSlice.reducer;
