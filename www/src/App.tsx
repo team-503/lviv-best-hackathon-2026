@@ -10,6 +10,7 @@ import { PointPage } from '@/pages/PointPage';
 import { WarehousePage } from '@/pages/WarehousePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
+import { PermissionsPage } from '@/pages/PermissionsPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 export default function App() {
@@ -68,6 +69,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <WarehousePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/permissions"
+          element={
+            <ProtectedRoute>
+              <PermissionsPage />
             </ProtectedRoute>
           }
         />

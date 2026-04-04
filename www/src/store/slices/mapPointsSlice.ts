@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { MAP_POINTS, type MapPoint, type StockItem } from '@/data/mockData';
+import { MAP_POINTS, type MapPoint, type PointType, type StockItem } from '@/data/mockData';
 
 interface MapPointsState {
   points: MapPoint[];
@@ -67,6 +67,17 @@ const mapPointsSlice = createSlice({
         point.stock = point.stock.filter((s) => s.productId !== action.payload.productId);
       }
     },
+    addPoint(
+      state,
+      action: PayloadAction<{ name: string; type: PointType; lat: number; lng: number; address: string; stock: StockItem[] }>,
+    ) {
+      const prefix = action.payload.type === 'warehouse' ? 'w' : 'd';
+      const id = `${prefix}-${Date.now()}`;
+      state.points.push({ ...action.payload, id, activeRequests: [] });
+    },
+    removePoint(state, action: PayloadAction<string>) {
+      state.points = state.points.filter((p) => p.id !== action.payload);
+    },
   },
 });
 
@@ -78,5 +89,7 @@ export const {
   updateQuantity,
   addStockItem,
   removeStockItem,
+  addPoint,
+  removePoint,
 } = mapPointsSlice.actions;
 export default mapPointsSlice.reducer;
