@@ -5,5 +5,6 @@ declare namespace NodeJS {
     DATABASE_URL?: string;
     CORS_ORIGIN?: string;
     CSRF_SECRET?: string;
+    SUPABASE_JWT_SECRET?: string;
   }
 }
