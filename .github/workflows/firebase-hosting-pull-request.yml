@@ -3,9 +3,9 @@
 # on:
 #   pull_request:
 #     paths:
-#       - "web/**"
-#       - "firebase.json"
-#       - ".github/workflows/firebase-hosting-pull-request.yml"
+#       - 'www/**'
+#       - 'firebase.json'
+#       - '.github/workflows/firebase-hosting-pull-request.yml'
 
 # permissions:
 #   checks: write
@@ -18,6 +18,25 @@
 #     runs-on: ubuntu-latest
 #     steps:
 #       - uses: actions/checkout@v4
+
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 24
+#           cache: npm
+#           cache-dependency-path: www/package-lock.json
+
+#       - name: Install dependencies
+#         run: npm ci
+#         working-directory: www
+
+#       - name: Typecheck
+#         run: npm run typecheck
+#         working-directory: www
+
+#       - name: Build
+#         run: npm run build
+#         working-directory: www
 
 #       - uses: FirebaseExtended/action-hosting-deploy@v0
 #         with:
