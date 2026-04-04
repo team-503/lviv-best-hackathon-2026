@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { getSessionIdentifier } from './common/helpers/session-identifier';
 import { HealthcheckModule } from './healthcheck/healthcheck.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { PointsModule } from './points/points.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
 import { ProfilesModule } from './profiles/profiles.module';
@@ -37,9 +38,10 @@ import { WarehousesModule } from './warehouses/warehouses.module';
     PrismaModule,
     AuthModule,
     ProfilesModule,
-    ProductsModule,
-    WarehousesModule,
     PermissionsModule,
+    ProductsModule,
+    PointsModule,
+    WarehousesModule,
   ],
   providers: [
     {
