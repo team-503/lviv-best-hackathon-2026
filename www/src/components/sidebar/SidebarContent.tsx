@@ -31,13 +31,13 @@ function PointCard({
       onMouseEnter={onHover}
       onMouseLeave={onHoverEnd}
     >
-      <button
-        className="w-full text-left p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
-        onClick={onSelect}
-      >
-        <div className="flex items-start gap-2">
+      <div className="flex items-center gap-2 p-3">
+        <button
+          className="flex flex-1 items-center gap-2 min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+          onClick={onSelect}
+        >
           <div
-            className={`flex size-7 shrink-0 items-center justify-center rounded-md mt-0.5 ${
+            className={`flex size-7 shrink-0 items-center justify-center rounded-md ${
               isWarehouse ? 'bg-indigo-500/15' : 'bg-primary/15'
             }`}
           >
@@ -47,24 +47,19 @@ function PointCard({
               <MapPin className="size-3.5 text-primary" />
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium leading-tight truncate">{point.name}</p>
-          </div>
-        </div>
-      </button>
+          <p className="text-sm font-medium leading-tight truncate">{point.name}</p>
+        </button>
 
-      <div className="px-3 pb-2 -mt-1 flex items-center gap-1">
         <Button
           variant="ghost"
-          size="sm"
-          className="h-6 text-xs text-muted-foreground hover:text-foreground px-2"
+          size="icon"
+          className="size-7 shrink-0 text-muted-foreground hover:text-foreground rounded-md"
           onClick={(e) => {
             e.stopPropagation();
             onOpen();
           }}
         >
-          <ExternalLink className="size-3" data-icon="inline-start" />
-          Відкрити
+          <ExternalLink className="size-3.5" />
         </Button>
       </div>
     </div>

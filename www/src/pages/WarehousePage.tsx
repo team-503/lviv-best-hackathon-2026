@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getWarehouse, updateWarehouseStock } from '@/lib/api/warehouses';
 import { useAppSelector } from '@/store/hooks';
 import type { WarehouseDetailResponseDto, ProductResponseDto } from '@/types/api';
-import { Package, Warehouse, Plus, Pencil, Trash2, Save, X, Infinity, Loader2 } from 'lucide-react';
+import { Package, Warehouse, Plus, Pencil, Trash2, Save, X, Loader2 } from 'lucide-react';
 
 // ─── Stock Row ───
 function WarehouseStockRow({
@@ -42,9 +42,7 @@ function WarehouseStockRow({
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">{productName}</p>
-        <p className="text-xs text-muted-foreground flex items-center gap-0.5 mt-0.5">
-          <Infinity className="size-3" /> Необмежені запаси
-        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">Кількість: {quantity}</p>
       </div>
 
       {/* Available stock */}
@@ -286,7 +284,7 @@ export function WarehousePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <Card>
           <CardContent className="pt-4 pb-4">
             <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{totalProducts}</p>
@@ -297,15 +295,6 @@ export function WarehousePage() {
           <CardContent className="pt-4 pb-4">
             <p className="text-2xl font-bold text-primary">{totalUnits.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Одиниць загалом</p>
-          </CardContent>
-        </Card>
-        <Card className="col-span-2 sm:col-span-1">
-          <CardContent className="pt-4 pb-4 flex items-center gap-2">
-            <Infinity className="size-5 text-emerald-500" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Необмежені запаси</p>
-              <p className="text-xs text-muted-foreground">Склад-джерело</p>
-            </div>
           </CardContent>
         </Card>
       </div>
@@ -338,7 +327,6 @@ export function WarehousePage() {
             <>
               {/* Column headers */}
               <div className="flex items-center gap-3 pb-2 text-xs text-muted-foreground font-medium border-b mb-1">
-                <div className="size-8 shrink-0" />
                 <div className="flex-1">Товар</div>
                 <div className="text-right">Доступна кількість</div>
               </div>
