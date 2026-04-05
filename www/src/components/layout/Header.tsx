@@ -1,4 +1,4 @@
-import { Moon, Sun, Truck, Menu, User, LogOut, Users } from 'lucide-react';
+import { Moon, Sun, Truck, Menu, User, LogOut, Users, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleTheme, setMobileSidebarOpen } from '@/store/slices/uiSlice';
@@ -47,15 +47,26 @@ export function Header({ showSimulation = false }: HeaderProps) {
       {/* Right */}
       <div className="flex items-center gap-2">
         {user?.role === 'admin' && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/admin/permissions')}
-            aria-label="Управління доступами"
-            title="Управління доступами"
-          >
-            <Users className="size-4" />
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/admin/permissions')}
+              aria-label="Управління доступами"
+              title="Управління доступами"
+            >
+              <Users className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/admin/products')}
+              aria-label="Управління продуктами"
+              title="Управління продуктами"
+            >
+              <Package className="size-4" />
+            </Button>
+          </>
         )}
         <Button variant="ghost" size="icon" onClick={() => dispatch(toggleTheme())} aria-label="Змінити тему">
           {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}

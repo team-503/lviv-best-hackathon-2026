@@ -11,6 +11,7 @@ import { WarehousePage } from '@/pages/WarehousePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { PermissionsPage } from '@/pages/PermissionsPage';
+import { ProductsPage } from '@/pages/ProductsPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 export default function App() {
@@ -67,6 +68,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <PermissionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute>
+              <ProductsPage />
             </ProtectedRoute>
           }
         />
