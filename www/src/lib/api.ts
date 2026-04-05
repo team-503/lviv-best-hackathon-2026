@@ -155,6 +155,10 @@ export class ApiError extends Error {
   }
 }
 
+export function isNetworkError(error: unknown): boolean {
+  return error instanceof TypeError;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>

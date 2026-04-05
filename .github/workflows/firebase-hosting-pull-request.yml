@@ -1,11 +1,11 @@
 name: Deploy to Firebase Hosting on PR
 
 on:
-#   pull_request:
-#     paths:
-#       - 'www/**'
-#       - 'firebase.json'
-#       - '.github/workflows/firebase-hosting-pull-request.yml'
+  pull_request:
+    paths:
+      - 'www/**'
+      - 'firebase.json'
+      - '.github/workflows/firebase-hosting-pull-request.yml'
 
 permissions:
   checks: write
@@ -37,6 +37,8 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: www
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
