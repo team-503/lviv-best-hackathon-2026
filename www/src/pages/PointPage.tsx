@@ -19,6 +19,7 @@ import type {
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchRequests } from '@/store/slices/requestsSlice';
 import type { CriticalityLevel } from '@/data/criticality';
+import { NearestLocations } from '@/components/point/NearestLocations';
 import { Package, MapPin, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, Save, X, Loader2 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; classes: string }> = {
@@ -467,6 +468,12 @@ export function PointPage() {
           </CardContent>
         </Card>
       </div>
+
+      {point.stock.length > 0 && (
+        <div className="mt-6">
+          <NearestLocations pointId={point.id} />
+        </div>
+      )}
     </PageLayout>
   );
 }
