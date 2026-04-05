@@ -340,7 +340,7 @@ export function PointPage() {
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
         {/* ─── Stock ─── */}
         <Card>
           <CardHeader className="pb-3">
