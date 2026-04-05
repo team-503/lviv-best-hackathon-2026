@@ -1,9 +1,13 @@
+import { useMemo } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { CriticalityBadge } from '@/components/ui/criticality-badge';
+import { CRITICALITY_CONFIG } from '@/data/criticality';
 import type { MapPoint, PlanDetailResponseDto, PlanRouteResponseDto } from '@/types/api';
-import { MapPin, Warehouse, Route, ExternalLink } from 'lucide-react';
+import { MapPin, Warehouse, Route, ExternalLink, Package, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { toggleRoute, setAllRoutes, clearRoutes } from '@/store/slices/uiSlice';
@@ -124,6 +128,66 @@ function PointsTab({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Requests Tab ───
+const CRITICALITY_RANK: Record<string, number> = Object.fromEntries(
+  Object.entries(CRITICALITY_CONFIG).map(([key, cfg]) => [key, -cfg.priority]),
+);
+
+const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string }> = {
+  active: { icon: <Clock className="size-3 text-muted-foreground" />, label: 'Активний' },
+  completed: { icon: <CheckCircle2 className="size-3 text-emerald-500" />, label: 'Виконано' },
+  cancelled: { icon: <XCircle className="size-3 text-destructive" />, label: 'Скасовано' },
+};
+
+function RequestsTab() {
+  const { requests, loading } = useAppSelector((s) => s.requests);
+
+  const sorted = useMemo(
+    () => [...requests].sort((a, b) => (CRITICALITY_RANK[a.criticality] ?? 0) - (CRITICALITY_RANK[b.criticality] ?? 0)),
+    [requests],
+  );
+
+  if (loading) {
+    return <p className="text-sm text-muted-foreground text-center py-4">Завантаження...</p>;
+  }
+
+  if (requests.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-4">Немає активних запитів</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {sorted.map((r) => {
+        const status = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.active;
+        return (
+          <div key={r.id} className="rounded-lg border bg-card p-3">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <p className="text-sm font-medium leading-tight">{r.pointName}</p>
+              <CriticalityBadge level={r.criticality} />
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+              <Package className="size-3" />
+              <span>
+                {r.product.name} — {r.quantity.toLocaleString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {status.icon}
+              <span>{status.label}</span>
+              <span className="ml-auto">
+                {new Date(r.createdAt).toLocaleTimeString('uk-UA', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -261,6 +325,7 @@ function PlanTab() {
   return (
     <div className="flex flex-col gap-6">
       {urgent && <PlanSection plan={urgent} />}
+      {urgent && standard && <Separator />}
       {standard && <PlanSection plan={standard} />}
     </div>
   );
@@ -275,26 +340,43 @@ interface SidebarContentProps {
 
 export function SidebarContent({ onSelectPoint, onOpenPoint, onHoverPoint }: SidebarContentProps) {
   const points = useAppSelector((s) => s.mapPoints.points);
+  const requests = useAppSelector((s) => s.requests.requests);
+  const urgentCount = useMemo(
+    () => requests.filter((r) => r.criticality === 'urgent' || r.criticality === 'critical').length,
+    [requests],
+  );
 
   return (
     <div className="flex flex-col h-full">
       {/* Stats strip */}
-      <div className="grid grid-cols-2 gap-2 p-3 border-b shrink-0">
+      <div className="grid grid-cols-3 gap-2 p-3 border-b shrink-0">
         <div className="text-center">
           <p className="text-lg font-bold text-primary">{points.filter((p) => p.type === 'warehouse').length}</p>
           <p className="text-xs text-muted-foreground">Склади</p>
         </div>
-        <div className="text-center border-l">
+        <div className="text-center border-x">
           <p className="text-lg font-bold text-primary">{points.filter((p) => p.type === 'point').length}</p>
           <p className="text-xs text-muted-foreground">Точки</p>
+        </div>
+        <div className="text-center">
+          <p className={`text-lg font-bold ${urgentCount > 0 ? 'text-destructive' : 'text-primary'}`}>{urgentCount}</p>
+          <p className="text-xs text-muted-foreground">Критичних</p>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue="points" className="flex flex-col flex-1 min-h-0">
-        <TabsList className="grid grid-cols-2 w-full rounded-none mt-3 shrink-0">
+        <TabsList className="grid grid-cols-3 w-full rounded-none mt-3 shrink-0">
           <TabsTrigger value="points" className="text-xs">
             Точки
+          </TabsTrigger>
+          <TabsTrigger value="requests" className="text-xs">
+            Запити
+            {requests.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-xs px-1 py-0 h-4">
+                {requests.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="plan" className="text-xs">
             План
@@ -305,6 +387,14 @@ export function SidebarContent({ onSelectPoint, onOpenPoint, onHoverPoint }: Sid
           <ScrollArea className="h-full">
             <div className="p-3">
               <PointsTab onSelectPoint={onSelectPoint} onOpenPoint={onOpenPoint} onHoverPoint={onHoverPoint} />
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="requests" className="flex-1 min-h-0 mt-0">
+          <ScrollArea className="h-full">
+            <div className="p-3">
+              <RequestsTab />
             </div>
           </ScrollArea>
         </TabsContent>

@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProfile } from '@/store/slices/authSlice';
 import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
 import { fetchProducts } from '@/store/slices/productsSlice';
+import { fetchRequests } from '@/store/slices/requestsSlice';
 import { MapPage } from '@/pages/MapPage';
 import { PointPage } from '@/pages/PointPage';
 import { WarehousePage } from '@/pages/WarehousePage';
@@ -31,6 +32,7 @@ export default function App() {
     if (isAuthenticated) {
       dispatch(fetchMapPoints());
       dispatch(fetchProducts());
+      dispatch(fetchRequests());
     }
   }, [isAuthenticated, dispatch]);
 

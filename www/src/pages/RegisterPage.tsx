@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch } from '@/store/hooks';
 import { registerUser } from '@/store/slices/authSlice';
-type UserRole = 'admin' | 'warehouse' | 'delivery';
+import { UserRole, USER_ROLE_LABELS } from '@/types/user-role';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Truck } from 'lucide-react';
 
-const ROLES: { value: UserRole; label: string }[] = [
-  { value: 'admin', label: 'Адміністратор' },
-  { value: 'warehouse', label: 'Менеджер складу' },
-  { value: 'delivery', label: "Кур'єр" },
-];
+const ROLES = Object.entries(USER_ROLE_LABELS).map(([value, label]) => ({ value: value as UserRole, label }));
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -23,7 +19,7 @@ export function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('delivery');
+  const [role, setRole] = useState<UserRole>(UserRole.User);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 

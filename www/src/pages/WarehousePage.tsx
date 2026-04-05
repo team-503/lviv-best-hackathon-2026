@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { getWarehouse, updateWarehouseStock } from '@/lib/api/warehouses';
 import { useAppSelector } from '@/store/hooks';
 import type { WarehouseDetailResponseDto, ProductResponseDto } from '@/types/api';
@@ -42,7 +42,6 @@ function WarehouseStockRow({
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">{productName}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">Кількість: {quantity}</p>
       </div>
 
       {/* Available stock */}
@@ -134,22 +133,16 @@ function AddProductDialog({
         <div className="flex flex-col gap-4 py-2">
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium">Товар</label>
-            <Select value={productId} onValueChange={(v) => setProductId(v ?? '')}>
-              <SelectTrigger>
-                <SelectValue placeholder="Оберіть товар..." />
-              </SelectTrigger>
-              <SelectContent>
-                {available.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">Усі товари вже додані</div>
-                ) : (
-                  available.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <NativeSelect className="w-full" value={productId} onChange={(e) => setProductId(e.target.value)}>
+              <NativeSelectOption value="" disabled>
+                Оберіть товар...
+              </NativeSelectOption>
+              {available.map((p) => (
+                <NativeSelectOption key={p.id} value={String(p.id)}>
+                  {p.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
           </div>
 
           <div className="flex flex-col gap-1.5">

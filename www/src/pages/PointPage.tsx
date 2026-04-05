@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { CriticalityBadge } from '@/components/ui/criticality-badge';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { getPoint, updatePointStock } from '@/lib/api/points';
 import { createDeliveryRequest, updateDeliveryRequest, deleteDeliveryRequest } from '@/lib/api/delivery-requests';
 import type {
@@ -15,8 +16,9 @@ import type {
   DeliveryRequestResponseDto,
   ProductResponseDto,
 } from '@/types/api';
-import { useAppSelector } from '@/store/hooks';
-import type { CriticalityLevel } from '@/data/mockData';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchRequests } from '@/store/slices/requestsSlice';
+import type { CriticalityLevel } from '@/data/criticality';
 import { Package, MapPin, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, Save, X, Loader2 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; classes: string }> = {
@@ -91,17 +93,13 @@ function RequestDialog({
       <CardContent className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">Товар</label>
-          <select
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            value={productId}
-            onChange={(e) => setProductId(Number(e.target.value))}
-          >
+          <NativeSelect className="w-full" value={productId} onChange={(e) => setProductId(Number(e.target.value))}>
             {products.map((p) => (
-              <option key={p.id} value={p.id}>
+              <NativeSelectOption key={p.id} value={p.id}>
                 {p.name}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -120,17 +118,17 @@ function RequestDialog({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">Критичність</label>
-          <select
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          <NativeSelect
+            className="w-full"
             value={criticality}
             onChange={(e) => setCriticality(e.target.value as CriticalityLevel)}
           >
             {CRITICALITY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+              <NativeSelectOption key={opt.value} value={opt.value}>
                 {opt.label}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-1">
@@ -242,6 +240,7 @@ function StockRow({
 export function PointPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   const [point, setPoint] = useState<PointDetailResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -287,6 +286,7 @@ export function PointPage() {
   function handleSaved() {
     setDialogState(null);
     void refetchPoint();
+    dispatch(fetchRequests());
   }
 
   async function handleDelete(requestId: number) {
@@ -294,6 +294,7 @@ export function PointPage() {
     try {
       await deleteDeliveryRequest(point.id, requestId);
       void refetchPoint();
+      dispatch(fetchRequests());
     } catch {
       // silently fail for now
     }

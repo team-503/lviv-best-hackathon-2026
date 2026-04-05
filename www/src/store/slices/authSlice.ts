@@ -1,18 +1,29 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import { login, register, logout as logoutApi } from '@/lib/api/auth';
+import { login, logout as logoutApi, register } from '@/lib/api/auth';
 import { getMyProfile } from '@/lib/api/profiles';
+import type { AuthUserResponseDto, ProfileResponseDto } from '@/types/api';
+import type { UserRole } from '@/types/user-role';
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: UserRole;
 }
 
 interface AuthState {
   user: AuthUser | null;
   isAuthenticated: boolean;
   loading: boolean;
+}
+
+function toAuthUser(u: AuthUserResponseDto | ProfileResponseDto): AuthUser {
+  return {
+    id: u.id,
+    name: u.displayName ?? u.email ?? '',
+    email: u.email ?? '',
+    role: u.role,
+  };
 }
 
 const initialState: AuthState = {
@@ -28,7 +39,7 @@ export const loginUser = createAsyncThunk('auth/login', async ({ email, password
 
 export const registerUser = createAsyncThunk(
   'auth/register',
-  async ({ name, email, password, role }: { name: string; email: string; password: string; role: string }) => {
+  async ({ name, email, password, role }: { name: string; email: string; password: string; role: UserRole }) => {
     const result = await register(name, email, password, role);
     return result.user;
   },
@@ -57,13 +68,7 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase(loginUser.fulfilled, (state, action) => {
-      const u = action.payload;
-      state.user = {
-        id: u.id,
-        name: u.displayName ?? u.email ?? '',
-        email: u.email ?? '',
-        role: u.role,
-      };
+      state.user = toAuthUser(action.payload);
       state.isAuthenticated = true;
       state.loading = false;
     });
@@ -71,13 +76,7 @@ const authSlice = createSlice({
       state.loading = false;
     });
     builder.addCase(registerUser.fulfilled, (state, action) => {
-      const u = action.payload;
-      state.user = {
-        id: u.id,
-        name: u.displayName ?? u.email ?? '',
-        email: u.email ?? '',
-        role: u.role,
-      };
+      state.user = toAuthUser(action.payload);
       state.isAuthenticated = true;
       state.loading = false;
     });
@@ -85,13 +84,7 @@ const authSlice = createSlice({
       state.loading = false;
     });
     builder.addCase(fetchProfile.fulfilled, (state, action) => {
-      const p = action.payload;
-      state.user = {
-        id: p.id,
-        name: p.displayName ?? p.email ?? '',
-        email: p.email ?? '',
-        role: p.role,
-      };
+      state.user = toAuthUser(action.payload);
       state.isAuthenticated = true;
       state.loading = false;
     });

@@ -1,5 +1,5 @@
+import type { CriticalityLevel } from '@/data/criticality';
 import { cn } from '@/lib/utils';
-import type { CriticalityLevel } from '@/data/mockData';
 
 const CONFIG: Record<CriticalityLevel, { label: string; classes: string }> = {
   urgent: {

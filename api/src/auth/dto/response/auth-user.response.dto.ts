@@ -7,7 +7,7 @@ export class AuthUserResponseDto {
   @ApiProperty({ example: 'user@example.com', nullable: true })
   email: string | null;
 
-  @ApiProperty({ example: 'Іван Франко', nullable: true })
+  @ApiProperty({ example: 'John Doe', nullable: true })
   displayName: string | null;
 
   @ApiProperty({ example: 'admin' })

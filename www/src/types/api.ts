@@ -1,3 +1,5 @@
+import type { UserRole } from './user-role';
+
 /* ── Shared ── */
 
 export interface LocationDto {
@@ -36,6 +38,11 @@ export interface DeliveryRequestResponseDto {
   createdAt: string;
 }
 
+export interface DeliveryRequestListItemResponseDto extends DeliveryRequestResponseDto {
+  pointId: number;
+  pointName: string;
+}
+
 export interface PointDetailResponseDto {
   id: number;
   name: string;
@@ -71,7 +78,7 @@ export interface AuthUserResponseDto {
   id: string;
   email: string | null;
   displayName: string | null;
-  role: string;
+  role: UserRole;
 }
 
 export interface AuthResponseDto {
@@ -84,7 +91,7 @@ export interface ProfileResponseDto {
   id: string;
   email: string | null;
   displayName: string | null;
-  role: string;
+  role: UserRole;
   createdAt: string;
 }
 

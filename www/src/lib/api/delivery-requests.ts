@@ -1,5 +1,9 @@
 import { api } from '../api';
-import type { DeliveryRequestResponseDto } from '@/types/api';
+import type { DeliveryRequestListItemResponseDto, DeliveryRequestResponseDto } from '@/types/api';
+
+export function getDeliveryRequests(): Promise<DeliveryRequestListItemResponseDto[]> {
+  return api.get('/delivery-requests');
+}
 
 export function createDeliveryRequest(
   pointId: number,

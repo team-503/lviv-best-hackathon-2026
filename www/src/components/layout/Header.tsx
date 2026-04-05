@@ -1,16 +1,11 @@
-import { Moon, Sun, Truck, Menu, User, LogOut, Users, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { toggleTheme, setMobileSidebarOpen } from '@/store/slices/uiSlice';
-import { logoutUser } from '@/store/slices/authSlice';
 import { useSimulation } from '@/hooks/useSimulation';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { logoutUser } from '@/store/slices/authSlice';
+import { setMobileSidebarOpen, toggleTheme } from '@/store/slices/uiSlice';
+import { USER_ROLE_LABELS } from '@/types/user-role';
+import { LogOut, Menu, Moon, Package, Sun, Truck, User, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Адміністратор',
-  warehouse: 'Склад',
-  delivery: 'Точка доставки',
-};
 
 interface HeaderProps {
   showSimulation?: boolean;
@@ -79,7 +74,7 @@ export function Header({ showSimulation = false }: HeaderProps) {
             </div>
             <div className="hidden sm:block">
               <p className="text-xs font-medium leading-none">{user.name}</p>
-              <p className="text-xs text-muted-foreground leading-none mt-0.5">{ROLE_LABELS[user.role]}</p>
+              <p className="text-xs text-muted-foreground leading-none mt-0.5">{USER_ROLE_LABELS[user.role]}</p>
             </div>
           </div>
         )}

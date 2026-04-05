@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
@@ -243,17 +244,17 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                       <div key={idx} className="flex items-end gap-2">
                         <div className="flex-1 flex flex-col gap-1">
                           <Label className="text-xs text-muted-foreground">Товар</Label>
-                          <select
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus:border-ring focus:ring-[3px] focus:ring-ring/50"
+                          <NativeSelect
+                            className="w-full"
                             value={row.productId}
                             onChange={(e) => updateStockRow(idx, { productId: Number(e.target.value) })}
                           >
                             {products.map((p) => (
-                              <option key={p.id} value={p.id} disabled={used.has(p.id)}>
+                              <NativeSelectOption key={p.id} value={p.id} disabled={used.has(p.id)}>
                                 {p.name}
-                              </option>
+                              </NativeSelectOption>
                             ))}
-                          </select>
+                          </NativeSelect>
                         </div>
                         <div className="w-24 flex flex-col gap-1">
                           <Label className="text-xs text-muted-foreground">Кількість</Label>
