@@ -16,12 +16,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { isNetworkError } from '@/lib/api';
 import { deleteWarehouse, getWarehouse, updateWarehouseStock } from '@/lib/api/warehouses';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
 import type { ProductResponseDto, WarehouseDetailResponseDto } from '@/types/api';
-import { Loader2, Package, Pencil, Plus, Save, Trash2, Warehouse, X } from 'lucide-react';
+import { Loader2, Package, Pencil, Plus, Save, Trash2, Warehouse, WifiOff, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 // ─── Stock Row ───
 function WarehouseStockRow({
@@ -199,6 +201,7 @@ export function WarehousePage() {
   const [error, setError] = useState<string | null>(null);
   const products = useAppSelector((s) => s.products.products);
   const user = useAppSelector((s) => s.auth.user);
+  const isOnline = useAppSelector((s) => s.connection.isOnline);
 
   useEffect(() => {
     let cancelled = false;
@@ -209,7 +212,9 @@ export function WarehousePage() {
         const data = await getWarehouse(Number(id));
         if (!cancelled) setWarehouse(data);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Не вдалося завантажити склад');
+        if (!cancelled && !isNetworkError(err)) {
+          setError(err instanceof Error ? err.message : 'Не вдалося завантажити склад');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -221,19 +226,24 @@ export function WarehousePage() {
   }, [id]);
 
   async function refetchWarehouse() {
-    if (!id) return;
+    if (!id || !navigator.onLine) return;
     try {
-      setError(null);
       const data = await getWarehouse(Number(id));
       setWarehouse(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не вдалося завантажити склад');
+      if (!isNetworkError(err)) {
+        setError(err instanceof Error ? err.message : 'Не вдалося завантажити склад');
+      }
     }
   }
 
   async function handleUpdateStock(items: { productId: number; quantity: number }[]) {
     if (!id) return;
     await updateWarehouseStock(Number(id), items);
+    if (!navigator.onLine) {
+      toast.info('Зміни збережено в офлайн-черзі');
+      return;
+    }
     await refetchWarehouse();
   }
 
@@ -281,7 +291,24 @@ export function WarehousePage() {
     );
   }
 
-  if (error || !warehouse) {
+  if (error) {
+    return <NotFoundPage />;
+  }
+
+  if (!warehouse) {
+    if (!isOnline) {
+      return (
+        <PageLayout title="Офлайн">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <WifiOff className="size-8 text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">Немає з'єднання з інтернетом. Дані складу недоступні офлайн.</p>
+            <Button variant="outline" className="mt-4" onClick={() => navigate('/')}>
+              На головну
+            </Button>
+          </div>
+        </PageLayout>
+      );
+    }
     return <NotFoundPage />;
   }
 

@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Separator } from '@/components/ui/separator';
 import type { CriticalityLevel } from '@/data/criticality';
+import { isNetworkError } from '@/lib/api';
 import { createDeliveryRequest, deleteDeliveryRequest, updateDeliveryRequest } from '@/lib/api/delivery-requests';
 import { deletePoint, getPoint, updatePointStock } from '@/lib/api/points';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -31,9 +32,23 @@ import type {
   PointStockItemResponseDto,
   ProductResponseDto,
 } from '@/types/api';
-import { AlertTriangle, CheckCircle2, Clock, Loader2, MapPin, Package, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  MapPin,
+  Package,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  WifiOff,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; classes: string }> = {
   active: { label: 'Активний', icon: Clock, classes: 'text-muted-foreground' },
@@ -260,6 +275,7 @@ export function PointPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const user = useAppSelector((s) => s.auth.user);
+  const isOnline = useAppSelector((s) => s.connection.isOnline);
 
   const [dialogState, setDialogState] = useState<
     { mode: 'create' } | { mode: 'edit'; request: DeliveryRequestResponseDto } | null
@@ -276,7 +292,9 @@ export function PointPage() {
         const data = await getPoint(Number(id));
         if (!cancelled) setPoint(data);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Не вдалося завантажити дані точки');
+        if (!cancelled && !isNetworkError(err)) {
+          setError(err instanceof Error ? err.message : 'Не вдалося завантажити дані точки');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -288,18 +306,23 @@ export function PointPage() {
   }, [id]);
 
   async function refetchPoint() {
-    if (!id) return;
+    if (!id || !navigator.onLine) return;
     try {
-      setError(null);
       const data = await getPoint(Number(id));
       setPoint(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не вдалося завантажити дані точки');
+      if (!isNetworkError(err)) {
+        setError(err instanceof Error ? err.message : 'Не вдалося завантажити дані точки');
+      }
     }
   }
 
   function handleSaved() {
     setDialogState(null);
+    if (!navigator.onLine) {
+      toast.info('Запит збережено в офлайн-черзі');
+      return;
+    }
     void refetchPoint();
     dispatch(fetchRequests());
   }
@@ -337,7 +360,24 @@ export function PointPage() {
     );
   }
 
-  if (error || !point) {
+  if (error) {
+    return <NotFoundPage />;
+  }
+
+  if (!point) {
+    if (!isOnline) {
+      return (
+        <PageLayout title="Офлайн">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <WifiOff className="size-8 text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">Немає з'єднання з інтернетом. Дані точки недоступні офлайн.</p>
+            <Button variant="outline" className="mt-4" onClick={() => navigate('/')}>
+              На головну
+            </Button>
+          </div>
+        </PageLayout>
+      );
+    }
     return <NotFoundPage />;
   }
 
