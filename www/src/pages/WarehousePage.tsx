@@ -1,15 +1,26 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { getWarehouse, updateWarehouseStock } from '@/lib/api/warehouses';
-import { useAppSelector } from '@/store/hooks';
-import type { WarehouseDetailResponseDto, ProductResponseDto } from '@/types/api';
-import { Package, Warehouse, Plus, Pencil, Trash2, Save, X, Loader2 } from 'lucide-react';
+import { deleteWarehouse, getWarehouse, updateWarehouseStock } from '@/lib/api/warehouses';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
+import type { ProductResponseDto, WarehouseDetailResponseDto } from '@/types/api';
+import { Loader2, Package, Pencil, Plus, Save, Trash2, Warehouse, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 // ─── Stock Row ───
 function WarehouseStockRow({
@@ -177,11 +188,15 @@ function AddProductDialog({
 export function WarehousePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [warehouse, setWarehouse] = useState<WarehouseDetailResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const products = useAppSelector((s) => s.products.products);
+  const user = useAppSelector((s) => s.auth.user);
 
   useEffect(() => {
     let cancelled = false;
@@ -236,6 +251,18 @@ export function WarehousePage() {
     await handleUpdateStock(items);
   }
 
+  async function handleDeleteWarehouse() {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await deleteWarehouse(Number(id));
+      await dispatch(fetchMapPoints());
+      navigate('/');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleAddProduct(productId: number, quantity: number) {
     if (!warehouse) return;
     const items = [...warehouse.stock.map((s) => ({ productId: s.product.id, quantity: s.quantity })), { productId, quantity }];
@@ -274,6 +301,17 @@ export function WarehousePage() {
         <span>
           {warehouse.location.lat.toFixed(4)}, {warehouse.location.lng.toFixed(4)}
         </span>
+        {user?.role === 'admin' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-auto size-8 text-destructive hover:text-destructive"
+            onClick={() => setDeleteDialogOpen(true)}
+            title="Видалити склад"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -345,6 +383,28 @@ export function WarehousePage() {
         onClose={() => setAddDialogOpen(false)}
         onAdd={handleAddProduct}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Видалити склад?</AlertDialogTitle>
+            <AlertDialogDescription>Склад буде архівовано. Цю дію не можна скасувати.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Скасувати</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDeleteWarehouse();
+              }}
+            >
+              {deleting && <Loader2 className="size-4 animate-spin mr-1" />}
+              Видалити
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }
