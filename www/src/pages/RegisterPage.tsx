@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Truck } from 'lucide-react';
 
 const ROLES = Object.entries(USER_ROLE_LABELS).map(([value, label]) => ({ value: value as UserRole, label }));
@@ -101,18 +101,13 @@ export function RegisterPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Роль</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>
-                        {r.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <NativeSelect className="w-full" value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
+                  {ROLES.map((r) => (
+                    <NativeSelectOption key={r.value} value={r.value}>
+                      {r.label}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
               </div>
               {error && <p className="text-xs text-destructive">{error}</p>}
             </CardContent>
