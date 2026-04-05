@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { getWarehouse, updateWarehouseStock } from '@/lib/api/warehouses';
 import { useAppSelector } from '@/store/hooks';
 import type { WarehouseDetailResponseDto, ProductResponseDto } from '@/types/api';
 import { Package, Warehouse, Plus, Pencil, Trash2, Save, X, Loader2 } from 'lucide-react';
+import { NotFoundPage } from '@/pages/NotFoundPage';
 
 // ─── Stock Row ───
 function WarehouseStockRow({
@@ -176,7 +177,7 @@ function AddProductDialog({
 // ─── Main Page ───
 export function WarehousePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [warehouse, setWarehouse] = useState<WarehouseDetailResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -253,14 +254,7 @@ export function WarehousePage() {
   }
 
   if (error || !warehouse) {
-    return (
-      <PageLayout title="Не знайдено">
-        <p className="text-muted-foreground">{error ?? 'Склад не знайдено.'}</p>
-        <Button className="mt-4" onClick={() => navigate('/')}>
-          На головну
-        </Button>
-      </PageLayout>
-    );
+    return <NotFoundPage />;
   }
 
   const totalProducts = warehouse.stock.length;
