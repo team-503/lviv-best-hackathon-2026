@@ -22,18 +22,20 @@ const ROUTE_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#0
 // ─── Icons ───
 function createPointIcon(type: 'warehouse' | 'point', isHovered = false) {
   const warehouseColor = '#6366f1';
-  const pointColor = '#2563eb';
+  const warehouseStroke = '#4338ca';
+  const pointColor = '#16a34a';
+  const pointStroke = '#15803d';
   const color = type === 'warehouse' ? warehouseColor : pointColor;
 
   const wrapStyle = isHovered
     ? `style="transform:scale(1.25);transform-origin:50% 100%;filter:drop-shadow(0 0 6px ${color}cc) drop-shadow(0 0 12px ${color}66);"`
-    : '';
+    : `style="filter:drop-shadow(0 1px 3px rgba(0,0,0,0.18)) drop-shadow(0 1px 1px rgba(0,0,0,0.08));"`;
 
   const svgWarehouse = `
     <div ${wrapStyle}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40" width="32" height="40">
         <path d="M16 0C9.4 0 4 5.4 4 12c0 9 12 28 12 28s12-19 12-28C28 5.4 22.6 0 16 0z"
-          fill="${warehouseColor}"/>
+          fill="${warehouseColor}" stroke="${warehouseStroke}" stroke-width="1"/>
         <rect x="10" y="10" width="12" height="10" rx="1" fill="white" opacity="0.9"/>
         <rect x="10" y="10" width="12" height="3" rx="1" fill="white"/>
         <rect x="14" y="16" width="4" height="4" rx="0.5" fill="${warehouseColor}"/>
@@ -44,7 +46,7 @@ function createPointIcon(type: 'warehouse' | 'point', isHovered = false) {
     <div ${wrapStyle}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 40" width="32" height="40">
         <path d="M16 0C9.4 0 4 5.4 4 12c0 9 12 28 12 28s12-19 12-28C28 5.4 22.6 0 16 0z"
-          fill="${pointColor}"/>
+          fill="${pointColor}" stroke="${pointStroke}" stroke-width="1"/>
         <circle cx="16" cy="13" r="5" fill="white" opacity="0.9"/>
         <circle cx="16" cy="13" r="3" fill="${pointColor}"/>
       </svg>

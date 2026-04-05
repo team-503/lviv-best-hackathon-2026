@@ -297,7 +297,7 @@ export function SidebarContent({ onSelectPoint, onOpenPoint, onHoverPoint }: Sid
 
       {/* Tabs */}
       <Tabs defaultValue="points" className="flex flex-col flex-1 min-h-0">
-        <TabsList className="grid grid-cols-2 mx-3 mt-3 shrink-0">
+        <TabsList className="grid grid-cols-2 w-full rounded-none mt-3 shrink-0">
           <TabsTrigger value="points" className="text-xs">
             Точки
           </TabsTrigger>
