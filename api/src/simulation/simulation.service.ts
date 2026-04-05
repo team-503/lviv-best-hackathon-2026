@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { LocationType } from '../common/enums/location-type.enum';
 import { PlanStatus } from '../common/enums/plan-status.enum';
 import { PlanType } from '../common/enums/plan-type.enum';
@@ -60,7 +60,7 @@ export class SimulationService {
     };
   }
 
-  private async executePlan(planType: PlanType): Promise<PlanWithRoutesResponseDto> {
+  private async executePlan(planType: PlanType): Promise<PlanWithRoutesResponseDto | null> {
     const criticalities = planType === PlanType.Urgent ? URGENT_CRITICALITIES : STANDARD_CRITICALITIES;
 
     return this.prisma.$transaction(async (tx) => {
@@ -70,7 +70,7 @@ export class SimulationService {
       });
 
       if (!plan) {
-        throw new BadRequestException(`No draft ${planType} plan available to execute`);
+        return null;
       }
 
       const stops = await tx.route_stops.findMany({

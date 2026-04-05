@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { useAppDispatch } from '@/store/hooks';
+import { registerUser } from '@/store/slices/authSlice';
 type UserRole = 'admin' | 'warehouse' | 'delivery';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ const ROLES: { value: UserRole; label: string }[] = [
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -36,14 +38,10 @@ export function RegisterPage() {
 
     setLoading(true);
 
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name, role } },
-    });
+    const result = await dispatch(registerUser({ name, email, password, role }));
 
-    if (authError) {
-      setError(authError.message);
+    if (registerUser.rejected.match(result)) {
+      setError(result.error.message ?? 'Помилка реєстрації');
       setLoading(false);
       return;
     }
@@ -69,7 +67,7 @@ export function RegisterPage() {
             <CardDescription className="text-xs">Створіть обліковий запис</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
-            <CardContent className="flex flex-col gap-4">
+            <CardContent className="flex flex-col gap-4 pb-6">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="name">Ім'я</Label>
                 <Input

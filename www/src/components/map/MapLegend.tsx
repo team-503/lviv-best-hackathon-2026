@@ -9,7 +9,7 @@ interface MapLegendProps {
 
 export function MapLegend({ showSimLegend = false }: MapLegendProps) {
   return (
-    <div className="absolute bottom-6 left-3 z-[400] rounded-lg border bg-card/95 backdrop-blur-sm p-3 shadow-md">
+    <div className="absolute bottom-6 left-3 z-10 rounded-lg border bg-card/95 backdrop-blur-sm p-3 shadow-md">
       <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Легенда</p>
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">

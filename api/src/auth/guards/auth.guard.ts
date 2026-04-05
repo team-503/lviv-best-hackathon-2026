@@ -21,17 +21,13 @@ export class AuthGuard implements CanActivate {
     if (!meta) return true;
 
     const request = context.switchToHttp().getRequest<Request>();
-    const authHeader = request.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing or invalid Authorization header');
+    const token =
+      (request.cookies as Record<string, string> | undefined)?.access_token ||
+      request.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      throw new UnauthorizedException('Missing or invalid Authorization');
     }
-
-    const token = authHeader.slice(7);
-    const payload = this.authService.verifyToken(token);
-    const sub = payload.sub;
-    if (!sub || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sub)) {
-      throw new UnauthorizedException('Invalid auth token: missing or malformed user ID');
-    }
+    const { sub } = await this.authService.verifyToken(token);
 
     const profile = await this.authService.getProfile(sub);
     request.user = {

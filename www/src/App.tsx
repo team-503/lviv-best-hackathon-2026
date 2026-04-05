@@ -2,10 +2,9 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setUser, fetchProfile } from '@/store/slices/authSlice';
+import { fetchProfile } from '@/store/slices/authSlice';
 import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
 import { fetchProducts } from '@/store/slices/productsSlice';
-import { supabase } from '@/lib/supabase';
 import { MapPage } from '@/pages/MapPage';
 import { PointPage } from '@/pages/PointPage';
 import { WarehousePage } from '@/pages/WarehousePage';
@@ -24,16 +23,7 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        dispatch(fetchProfile());
-      } else {
-        dispatch(setUser(null));
-      }
-    });
-    return () => subscription.unsubscribe();
+    dispatch(fetchProfile());
   }, [dispatch]);
 
   useEffect(() => {
