@@ -1,19 +1,20 @@
-import { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { LoginPage } from '@/pages/LoginPage';
+import { MapPage } from '@/pages/MapPage';
+import { NotFoundPage } from '@/pages/NotFoundPage';
+import { PermissionsPage } from '@/pages/PermissionsPage';
+import { PointPage } from '@/pages/PointPage';
+import { ProductsPage } from '@/pages/ProductsPage';
+import { RegisterPage } from '@/pages/RegisterPage';
+import { WarehousePage } from '@/pages/WarehousePage';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProfile } from '@/store/slices/authSlice';
 import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
 import { fetchProducts } from '@/store/slices/productsSlice';
 import { fetchRequests } from '@/store/slices/requestsSlice';
-import { MapPage } from '@/pages/MapPage';
-import { PointPage } from '@/pages/PointPage';
-import { WarehousePage } from '@/pages/WarehousePage';
-import { LoginPage } from '@/pages/LoginPage';
-import { RegisterPage } from '@/pages/RegisterPage';
-import { PermissionsPage } from '@/pages/PermissionsPage';
-import { ProductsPage } from '@/pages/ProductsPage';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { useEffect } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 
 export default function App() {
   const dispatch = useAppDispatch();
@@ -81,6 +82,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </TooltipProvider>
   );
