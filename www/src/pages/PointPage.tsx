@@ -1,5 +1,15 @@
 import { PageLayout } from '@/components/layout/PageLayout';
 import { NearestLocations } from '@/components/point/NearestLocations';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +20,10 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Separator } from '@/components/ui/separator';
 import type { CriticalityLevel } from '@/data/criticality';
 import { createDeliveryRequest, deleteDeliveryRequest, updateDeliveryRequest } from '@/lib/api/delivery-requests';
-import { getPoint, updatePointStock } from '@/lib/api/points';
+import { deletePoint, getPoint, updatePointStock } from '@/lib/api/points';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
 import { fetchRequests } from '@/store/slices/requestsSlice';
 import type {
   DeliveryRequestResponseDto,
@@ -22,7 +33,7 @@ import type {
 } from '@/types/api';
 import { AlertTriangle, CheckCircle2, Clock, Loader2, MapPin, Package, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; classes: string }> = {
   active: { label: 'Активний', icon: Clock, classes: 'text-muted-foreground' },
@@ -240,12 +251,15 @@ function StockRow({
 // ─── Main Page ───
 export function PointPage() {
   const { id } = useParams<{ id: string }>();
-
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
   const [point, setPoint] = useState<PointDetailResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const user = useAppSelector((s) => s.auth.user);
 
   const [dialogState, setDialogState] = useState<
     { mode: 'create' } | { mode: 'edit'; request: DeliveryRequestResponseDto } | null
@@ -290,6 +304,18 @@ export function PointPage() {
     dispatch(fetchRequests());
   }
 
+  async function handleDeletePoint() {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await deletePoint(Number(id));
+      await dispatch(fetchMapPoints());
+      navigate('/');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleDelete(requestId: number) {
     if (!point) return;
     try {
@@ -331,6 +357,17 @@ export function PointPage() {
           <Badge variant="destructive" className="ml-2">
             {belowThresholdCount} нижче порогу
           </Badge>
+        )}
+        {user?.role === 'admin' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-auto size-8 text-destructive hover:text-destructive"
+            onClick={() => setDeleteDialogOpen(true)}
+            title="Видалити точку"
+          >
+            <Trash2 className="size-4" />
+          </Button>
         )}
       </div>
 
@@ -467,6 +504,28 @@ export function PointPage() {
           <NearestLocations pointId={point.id} />
         </div>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Видалити точку доставки?</AlertDialogTitle>
+            <AlertDialogDescription>Точку буде архівовано. Цю дію не можна скасувати.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Скасувати</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDeletePoint();
+              }}
+            >
+              {deleting && <Loader2 className="size-4 animate-spin mr-1" />}
+              Видалити
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }

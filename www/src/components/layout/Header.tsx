@@ -34,7 +34,7 @@ export function Header({ showSimulation = false }: HeaderProps) {
           </div>
           <div className="hidden sm:block">
             <span className="text-sm font-semibold leading-none">LogiFlow</span>
-            <p className="text-xs text-muted-foreground leading-none mt-0.5">День {day}</p>
+            <p className="text-xs text-muted-foreground leading-none mt-0.5">Ітерація {day}</p>
           </div>
         </div>
       </div>
