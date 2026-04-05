@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ResourceType } from '../common/enums/resource-type.enum';
 import { PrismaService } from '../prisma/prisma.service';
-import { DEFAULT_LIMIT } from './constants';
+import { DEFAULT_LIMIT } from './geo.constants';
 import type { NearestLocationResponseDto } from './dto/response/nearest-location.response.dto';
 import type { NearestPointResponseDto } from './dto/response/nearest-point.response.dto';
 import type { NearestWarehouseResponseDto } from './dto/response/nearest-warehouse.response.dto';
+import type { ProductNearestLocationsResponseDto } from './dto/response/product-nearest-locations.response.dto';
 import { toNearestLocation, toNearestPoint, toNearestWarehouse } from './geo.helper';
 import type { NearestPointRow } from './types/nearest-point-row.type';
 import type { NearestWarehouseRow } from './types/nearest-warehouse-row.type';
@@ -149,5 +151,42 @@ export class GeoService {
     `;
 
     return rows.map((r) => toNearestLocation(r));
+  }
+
+  async findNearestForPoint(pointId: number, limit: number = 3): Promise<ProductNearestLocationsResponseDto[]> {
+    const rows = await this.prisma.$queryRaw<
+      { id: number; lat: number; lng: number; product_id: number; product_name: string }[]
+    >`
+      SELECT
+        p.id,
+        ST_Y(p.location::geometry) AS lat,
+        ST_X(p.location::geometry) AS lng,
+        ps.product_id,
+        pr.name AS product_name
+      FROM points p
+      JOIN point_stock ps ON ps.point_id = p.id
+      JOIN products pr ON pr.id = ps.product_id
+      WHERE p.id = ${pointId} AND p.archived = false
+    `;
+    if (rows.length === 0) {
+      throw new NotFoundException(`Point ${pointId} not found or has no stock`);
+    }
+
+    const { lat, lng } = rows[0];
+
+    return await Promise.all(
+      rows.map(async (row) => {
+        const locations = await this.findNearestLocationsWithProduct(lat, lng, row.product_id, limit + 1);
+
+        const filtered = locations
+          .filter((loc) => !(loc.locationType === ResourceType.Point && loc.id === pointId))
+          .slice(0, limit);
+
+        return {
+          product: { id: row.product_id, name: row.product_name },
+          nearestLocations: filtered,
+        };
+      }),
+    );
   }
 }

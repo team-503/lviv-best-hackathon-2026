@@ -118,6 +118,25 @@ export interface StockUpdatedResponseDto {
   updated: number;
 }
 
+/* ── Geo / Nearest ── */
+
+export interface NearestLocationResponseDto {
+  locationType: 'warehouse' | 'point';
+  id: number;
+  name: string;
+  location: LocationDto;
+  distanceMeters: number;
+  product: ProductResponseDto;
+  quantity: number;
+  minThreshold: number;
+  surplus: number;
+}
+
+export interface ProductNearestLocationsResponseDto {
+  product: ProductResponseDto;
+  nearestLocations: NearestLocationResponseDto[];
+}
+
 /* ── Unified MapPoint for frontend map view ── */
 
 export interface MapPoint {
