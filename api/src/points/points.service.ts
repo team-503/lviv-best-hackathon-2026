@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { StockUpdatedResponseDto } from '../common/dto/response/stock-updated.response.dto';
 import { RequestStatus } from '../common/enums/request-status.enum';
+import { DeliveryPlansService } from '../delivery-plans/delivery-plans.service';
 import { toDeliveryRequest } from '../delivery-requests/delivery-requests.helper';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePointDto } from './dto/request/create-point.dto';
@@ -16,7 +17,12 @@ import type { PointWithPermissionsRow } from './types/point-with-permissions-row
 
 @Injectable()
 export class PointsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(PointsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly deliveryPlansService: DeliveryPlansService,
+  ) {}
 
   async findAll(userId: string): Promise<PointListItemResponseDto[]> {
     const rows = await this.prisma.$queryRaw<PointWithPermissionsRow[]>`
@@ -104,18 +110,50 @@ export class PointsService {
   }
 
   async updateStock(pointId: number, items: UpdatePointStockItemDto[]): Promise<StockUpdatedResponseDto> {
-    if (items.length > 0) {
-      const values = Prisma.join(items.map((i) => Prisma.sql`(${pointId}, ${i.productId}, 0, ${i.minThreshold})`));
+    await this.prisma.$transaction(async (tx) => {
+      if (items.length > 0) {
+        const values = Prisma.join(items.map((i) => Prisma.sql`(${pointId}, ${i.productId}, 0, ${i.minThreshold})`));
 
-      await this.prisma.$executeRaw`
-        INSERT INTO point_stock (point_id, product_id, quantity, min_threshold)
-        VALUES ${values}
-        ON CONFLICT (point_id, product_id)
-        DO UPDATE SET min_threshold = EXCLUDED.min_threshold
-      `;
-    }
+        await tx.$executeRaw`
+          INSERT INTO point_stock (point_id, product_id, quantity, min_threshold)
+          VALUES ${values}
+          ON CONFLICT (point_id, product_id)
+          DO UPDATE SET min_threshold = EXCLUDED.min_threshold
+        `;
+
+        const productIds = Prisma.join(items.map((i) => i.productId));
+        await tx.$executeRaw`
+          DELETE FROM point_stock
+          WHERE point_id = ${pointId}
+            AND product_id NOT IN (${productIds})
+        `;
+      } else {
+        await tx.$executeRaw`
+          DELETE FROM point_stock
+          WHERE point_id = ${pointId}
+        `;
+      }
+    });
 
     return { updated: items.length };
+  }
+
+  async removeStockItem(pointId: number, productId: number): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.point_stock.deleteMany({
+        where: { point_id: pointId, product_id: productId },
+      });
+
+      if (deleted.count === 0) {
+        throw new NotFoundException('Stock item not found');
+      }
+
+      await tx.delivery_requests.deleteMany({
+        where: { point_id: pointId, product_id: productId, status: RequestStatus.Active },
+      });
+    });
+
+    this.deliveryPlansService.recalculateAll().catch((err) => this.logger.error('Failed to recalculate delivery plans', err));
   }
 
   private async findOneWithClient(client: Prisma.TransactionClient | PrismaService, id: number): Promise<PointDetailResponseDto> {
