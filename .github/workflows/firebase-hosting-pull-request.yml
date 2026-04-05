@@ -1,45 +1,45 @@
-# name: Deploy to Firebase Hosting on PR
+name: Deploy to Firebase Hosting on PR
 
-# on:
+on:
 #   pull_request:
 #     paths:
 #       - 'www/**'
 #       - 'firebase.json'
 #       - '.github/workflows/firebase-hosting-pull-request.yml'
 
-# permissions:
-#   checks: write
-#   contents: read
-#   pull-requests: write
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
 
-# jobs:
-#   build_and_preview:
-#     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v4
+jobs:
+  build_and_preview:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-#       - name: Setup Node.js
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: 24
-#           cache: npm
-#           cache-dependency-path: www/package-lock.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: www/package-lock.json
 
-#       - name: Install dependencies
-#         run: npm ci
-#         working-directory: www
+      - name: Install dependencies
+        run: npm ci
+        working-directory: www
 
-#       - name: Typecheck
-#         run: npm run typecheck
-#         working-directory: www
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: www
 
-#       - name: Build
-#         run: npm run build
-#         working-directory: www
+      - name: Build
+        run: npm run build
+        working-directory: www
 
-#       - uses: FirebaseExtended/action-hosting-deploy@v0
-#         with:
-#           repoToken: ${{ secrets.GITHUB_TOKEN }}
-#           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TEAM_503_2026 }}
-#           projectId: team-503-2026
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TEAM_503_2026 }}
+          projectId: team-503-2026

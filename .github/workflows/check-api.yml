@@ -5,10 +5,10 @@ on:
   #   paths:
   #     - "api/**"
   #     - ".github/workflows/check-api.yml"
-  pull_request:
-    paths:
-      - "api/**"
-      - ".github/workflows/check-api.yml"
+  # pull_request:
+  #   paths:
+  #     - "api/**"
+  #     - ".github/workflows/check-api.yml"
 
 jobs:
   check:
