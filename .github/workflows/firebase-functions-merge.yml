@@ -35,6 +35,20 @@ jobs:
         run: npm run build
         working-directory: api
 
+      - name: Create .env for Firebase Functions
+        working-directory: api
+        run: |
+          cat <<EOF > .env
+          NODE_ENV=${{ secrets.NODE_ENV }}
+          CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
+          CSRF_SECRET=${{ secrets.CSRF_SECRET }}
+          DATABASE_DIRECT_URL=${{ secrets.DATABASE_DIRECT_URL }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EOF
+
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@v15.7.0
         with:
@@ -42,4 +56,3 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TEAM_503_2026 }}
           PROJECT_ID: team-503-2026
-          NODE_ENV: production
