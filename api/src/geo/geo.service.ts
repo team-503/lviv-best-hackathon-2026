@@ -36,6 +36,7 @@ export class GeoService {
       JOIN products p ON p.id = ws.product_id
       WHERE ws.product_id = ${productId}
         AND ws.quantity > 0
+        AND w.archived = false
       ORDER BY distance_meters
       LIMIT ${limit}
     `;
@@ -70,6 +71,7 @@ export class GeoService {
       JOIN products p ON p.id = ps.product_id
       WHERE ps.product_id = ${productId}
         AND (ps.quantity - ps.min_threshold) >= ${minSurplus}
+        AND pt.archived = false
       ORDER BY distance_meters
       LIMIT ${limit}
     `;
@@ -116,6 +118,7 @@ export class GeoService {
         JOIN products p ON p.id = ws.product_id
         WHERE ws.product_id = ${productId}
           AND ws.quantity > 0
+          AND w.archived = false
       )
       UNION ALL
       (
@@ -139,6 +142,7 @@ export class GeoService {
         JOIN products p ON p.id = ps.product_id
         WHERE ps.product_id = ${productId}
           AND (ps.quantity - ps.min_threshold) > 0
+          AND pt.archived = false
       )
       ORDER BY distance_meters
       LIMIT ${limit}
