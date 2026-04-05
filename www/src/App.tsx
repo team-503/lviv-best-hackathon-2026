@@ -1,5 +1,6 @@
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { LoginPage } from '@/pages/LoginPage';
 import { MapPage } from '@/pages/MapPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -17,6 +18,7 @@ import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 export default function App() {
+  useOnlineStatus();
   const dispatch = useAppDispatch();
   const theme = useAppSelector((s) => s.ui.theme);
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);

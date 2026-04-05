@@ -3,7 +3,7 @@ import { useSimulation } from '@/hooks/useSimulation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logoutUser } from '@/store/slices/authSlice';
 import { setMobileSidebarOpen, toggleTheme } from '@/store/slices/uiSlice';
-import { USER_ROLE_LABELS } from '@/types/user-role';
+import { USER_ROLE_LABELS, type UserRole } from '@/types/user-role';
 import { LogOut, Menu, Moon, Package, Sun, Truck, User, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -74,7 +74,7 @@ export function Header({ showSimulation = false }: HeaderProps) {
             </div>
             <div className="hidden sm:block">
               <p className="text-xs font-medium leading-none">{user.name}</p>
-              <p className="text-xs text-muted-foreground leading-none mt-0.5">{USER_ROLE_LABELS[user.role]}</p>
+              <p className="text-xs text-muted-foreground leading-none mt-0.5">{USER_ROLE_LABELS[user.role as UserRole]}</p>
             </div>
           </div>
         )}
