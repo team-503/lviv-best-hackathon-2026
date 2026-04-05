@@ -83,19 +83,29 @@
 
 ## Архітектура
 
-```
-┌─────────────┐     HTTPS/JWT      ┌──────────────────┐     Prisma      ┌──────────────────┐
-│   Frontend  │ ──────────────────▶ │   NestJS API     │ ─────────────▶  │  PostgreSQL +    │
-│   React     │ ◀────────────────── │   (Firebase Fn)  │ ◀───────────── │  PostGIS         │
-│   (SPA)     │     JSON + CSRF    │                  │                 │  (Supabase)      │
-└─────────────┘                     └──────────────────┘                 └──────────────────┘
-       │                                    │
-       │ Supabase JS SDK                    │ Supabase Admin SDK
-       ▼                                    ▼
-┌──────────────────────────────────────────────────────┐
-│                    Supabase Auth                      │
-│              JWT (ES256) + RLS policies               │
-└──────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph Client
+        A[Frontend<br/>React SPA<br/>Firebase Hosting]
+    end
+
+    subgraph Server
+        B[NestJS API<br/>Firebase Functions<br/>europe-west1]
+    end
+
+    subgraph Database
+        C[(PostgreSQL + PostGIS<br/>Supabase<br/>eu-central-1)]
+    end
+
+    subgraph Auth
+        D[Supabase Auth<br/>JWT ES256 + RLS]
+    end
+
+    A -- "HTTPS / JSON + CSRF" --> B
+    B -- "Prisma ORM" --> C
+    A -. "Supabase JS SDK" .-> D
+    B -. "Supabase Admin SDK" .-> D
+    D -. "JWT verification" .-> B
 ```
 
 ## Структура проекту
