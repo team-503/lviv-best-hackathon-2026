@@ -1,56 +1,42 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { DELIVERY_REQUESTS, type DeliveryRequest, type CriticalityLevel } from '@/data/mockData';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { getDeliveryRequests } from '@/lib/api/delivery-requests';
+import type { DeliveryRequestListItemResponseDto } from '@/types/api';
 
 interface RequestsState {
-  requests: DeliveryRequest[];
+  requests: DeliveryRequestListItemResponseDto[];
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: RequestsState = {
-  requests: DELIVERY_REQUESTS,
+  requests: [],
+  loading: false,
+  error: null,
 };
+
+export const fetchRequests = createAsyncThunk('requests/fetch', async () => {
+  return getDeliveryRequests();
+});
 
 const requestsSlice = createSlice({
   name: 'requests',
   initialState,
-  reducers: {
-    addRequest(state, action: PayloadAction<DeliveryRequest>) {
-      state.requests.push(action.payload);
-    },
-    removeRequest(state, action: PayloadAction<string>) {
-      state.requests = state.requests.filter((r) => r.id !== action.payload);
-    },
-    updateRequestStatus(
-      state,
-      action: PayloadAction<{ id: string; status: DeliveryRequest['status'] }>,
-    ) {
-      const req = state.requests.find((r) => r.id === action.payload.id);
-      if (req) req.status = action.payload.status;
-    },
-    updateRequestCriticality(
-      state,
-      action: PayloadAction<{ id: string; criticality: CriticalityLevel }>,
-    ) {
-      const req = state.requests.find((r) => r.id === action.payload.id);
-      if (req) req.criticality = action.payload.criticality;
-    },
-    updateRequest(
-      state,
-      action: PayloadAction<{ id: string; quantity: number; criticality: CriticalityLevel }>,
-    ) {
-      const req = state.requests.find((r) => r.id === action.payload.id);
-      if (req) {
-        req.quantity = action.payload.quantity;
-        req.criticality = action.payload.criticality;
-      }
-    },
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchRequests.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchRequests.fulfilled, (state, action) => {
+        state.requests = action.payload;
+        state.loading = false;
+      })
+      .addCase(fetchRequests.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message ?? 'Failed to fetch delivery requests';
+      });
   },
 });
 
-export const {
-  addRequest,
-  removeRequest,
-  updateRequestStatus,
-  updateRequestCriticality,
-  updateRequest,
-} = requestsSlice.actions;
 export default requestsSlice.reducer;

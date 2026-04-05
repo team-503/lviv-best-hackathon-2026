@@ -2,15 +2,17 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setUser } from '@/store/slices/authSlice';
-import { supabase } from '@/lib/supabase';
-import type { UserRole } from '@/data/mockData';
+import { fetchProfile } from '@/store/slices/authSlice';
+import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
+import { fetchProducts } from '@/store/slices/productsSlice';
+import { fetchRequests } from '@/store/slices/requestsSlice';
 import { MapPage } from '@/pages/MapPage';
 import { PointPage } from '@/pages/PointPage';
 import { WarehousePage } from '@/pages/WarehousePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { PermissionsPage } from '@/pages/PermissionsPage';
+import { ProductsPage } from '@/pages/ProductsPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 export default function App() {
@@ -23,25 +25,16 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const meta = session.user.user_metadata;
-        dispatch(
-          setUser({
-            id: session.user.id,
-            name: (meta.name as string) ?? session.user.email ?? '',
-            email: session.user.email ?? '',
-            role: (meta.role as UserRole) ?? 'delivery',
-          }),
-        );
-      } else {
-        dispatch(setUser(null));
-      }
-    });
-    return () => subscription.unsubscribe();
+    dispatch(fetchProfile());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchMapPoints());
+      dispatch(fetchProducts());
+      dispatch(fetchRequests());
+    }
+  }, [isAuthenticated, dispatch]);
 
   return (
     <TooltipProvider>
@@ -77,6 +70,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <PermissionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute>
+              <ProductsPage />
             </ProtectedRoute>
           }
         />

@@ -15,6 +15,7 @@ import { PointsModule } from './points/points.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductsModule } from './products/products.module';
 import { ProfilesModule } from './profiles/profiles.module';
+import { SimulationModule } from './simulation/simulation.module';
 import { WarehousesModule } from './warehouses/warehouses.module';
 
 @Module({
@@ -48,6 +49,7 @@ import { WarehousesModule } from './warehouses/warehouses.module';
     DeliveryPlansModule,
     GeoModule,
     WarehousesModule,
+    SimulationModule,
   ],
   providers: [
     {

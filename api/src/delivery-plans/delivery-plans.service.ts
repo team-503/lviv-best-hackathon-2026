@@ -129,6 +129,7 @@ export class DeliveryPlansService {
       JOIN products p ON p.id = dr.product_id
       WHERE dr.status = ${RequestStatus.Active}
         AND dr.criticality::text IN (${Prisma.join(criticalities)})
+        AND pt.archived = false
     `;
   }
 
@@ -194,6 +195,7 @@ export class DeliveryPlansService {
         ST_Y(location::geometry) AS lat,
         ST_X(location::geometry) AS lng
       FROM warehouses
+      WHERE archived = false
       ORDER BY id
     `;
   }
@@ -334,7 +336,7 @@ export class DeliveryPlansService {
     return toPlanWithRoutes({ id: plan.id, type: plan.type, status: plan.status, created_at: plan.created_at }, rows);
   }
 
-  private async fetchPlanRouteStops(planId: number): Promise<PlanRouteStopRow[]> {
+  async fetchPlanRouteStops(planId: number): Promise<PlanRouteStopRow[]> {
     return this.prisma.$queryRaw<PlanRouteStopRow[]>`
       SELECT
         pr.id AS route_id,

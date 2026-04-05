@@ -1,19 +1,21 @@
-import { Play, SkipForward, CheckCheck, CalendarDays, Truck, AlertTriangle } from 'lucide-react';
+import { Play, SkipForward, CheckCheck, Truck, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSimulation } from '@/hooks/useSimulation';
 import type { SimStatus } from '@/store/slices/simulationSlice';
-import { useAppSelector } from '@/store/hooks';
 import { cn } from '@/lib/utils';
 
-const STATUS_CONFIG: Record<SimStatus, {
-  label: string;
-  description: string;
-  icon: React.ElementType;
-  classes: string;
-  btnLabel: string;
-  btnIcon: React.ElementType;
-  btnClasses: string;
-}> = {
+const STATUS_CONFIG: Record<
+  SimStatus,
+  {
+    label: string;
+    description: string;
+    icon: React.ElementType;
+    classes: string;
+    btnLabel: string;
+    btnIcon: React.ElementType;
+    btnClasses: string;
+  }
+> = {
   idle: {
     label: 'Очікування',
     description: 'Приймаються нові запити на доставку',
@@ -41,23 +43,10 @@ const STATUS_CONFIG: Record<SimStatus, {
     btnIcon: CheckCheck,
     btnClasses: 'bg-emerald-600 hover:bg-emerald-700 text-white border-0',
   },
-  complete: {
-    label: 'День завершено',
-    description: 'Усі запити виконано. Можна починати новий день',
-    icon: CheckCheck,
-    classes: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400',
-    btnLabel: 'Новий день',
-    btnIcon: CalendarDays,
-    btnClasses: '',
-  },
 };
 
 export function SimulationBanner() {
-  const { status, day, activeRoutes, runSimulation } = useSimulation();
-  const urgentCount = useAppSelector((s) =>
-    s.requests.requests.filter((r) => r.criticality === 'urgent').length,
-  );
-  const totalRequests = useAppSelector((s) => s.requests.requests.length);
+  const { status, day, activeRoutes, loading, runSimulation } = useSimulation();
   const cfg = STATUS_CONFIG[status];
   const StatusIcon = cfg.icon;
   const BtnIcon = cfg.btnIcon;
@@ -74,26 +63,22 @@ export function SimulationBanner() {
       {/* Stats */}
       <div className="hidden md:flex items-center gap-4 text-xs opacity-70 shrink-0">
         <span>День {day}</span>
-        {status === 'idle' && <span>{totalRequests} запит(ів)</span>}
-        {status === 'idle' && urgentCount > 0 && (
-          <span className="text-amber-600 dark:text-amber-400 font-medium">
-            {urgentCount} термінових
-          </span>
-        )}
-        {(status === 'stage1' || status === 'stage2') && (
+        {(status === 'stage1' || status === 'stage2') && activeRoutes.length > 0 && (
           <span>{activeRoutes.length} маршрут(ів) на карті</span>
         )}
       </div>
 
-      {/* Mobile sim button */}
+      {/* Action button */}
       <Button
         size="sm"
         onClick={runSimulation}
-        className={cn('sm:hidden h-7 text-xs', cfg.btnClasses)}
+        disabled={loading}
+        className={cn('h-7 text-xs', cfg.btnClasses)}
         variant="outline"
       >
         <BtnIcon className="size-3.5" data-icon="inline-start" />
-        {status === 'complete' ? 'Новий день' : 'Далі'}
+        <span className="hidden sm:inline">{cfg.btnLabel}</span>
+        <span className="sm:hidden">Далі</span>
       </Button>
     </div>
   );

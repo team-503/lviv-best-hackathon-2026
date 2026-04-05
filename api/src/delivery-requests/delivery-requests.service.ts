@@ -1,9 +1,14 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import type { RequestUser } from '../auth/auth.types';
+import { PermissionLevel } from '../common/enums/permission-level.enum';
+import { RequestStatus } from '../common/enums/request-status.enum';
+import { ResourceType } from '../common/enums/resource-type.enum';
 import { DeliveryPlansService } from '../delivery-plans/delivery-plans.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { toDeliveryRequest } from './delivery-requests.helper';
+import { toDeliveryRequest, toDeliveryRequestListItem } from './delivery-requests.helper';
 import type { CreateDeliveryRequestDto } from './dto/request/create-delivery-request.dto';
 import type { UpdateDeliveryRequestDto } from './dto/request/update-delivery-request.dto';
+import type { DeliveryRequestListItemResponseDto } from './dto/response/delivery-request-list-item.response.dto';
 import type { DeliveryRequestResponseDto } from './dto/response/delivery-request.response.dto';
 
 @Injectable()
@@ -14,6 +19,35 @@ export class DeliveryRequestsService {
     private readonly prisma: PrismaService,
     private readonly deliveryPlansService: DeliveryPlansService,
   ) {}
+
+  async findAll(user: RequestUser): Promise<DeliveryRequestListItemResponseDto[]> {
+    let pointIds: number[] | undefined;
+
+    if (user.role !== 'admin') {
+      const permissions = await this.prisma.user_permissions.findMany({
+        where: {
+          user_id: user.id,
+          resource_type: ResourceType.Point,
+          permissions: { has: PermissionLevel.Read },
+        },
+        select: { resource_id: true },
+      });
+
+      pointIds = permissions.map((p) => p.resource_id);
+      if (pointIds.length === 0) return [];
+    }
+
+    const rows = await this.prisma.delivery_requests.findMany({
+      where: {
+        status: RequestStatus.Active,
+        ...(pointIds && { point_id: { in: pointIds } }),
+      },
+      include: { products: true, points: { select: { id: true, name: true } } },
+      orderBy: { created_at: 'desc' },
+    });
+
+    return rows.map((r) => toDeliveryRequestListItem(r));
+  }
 
   async create(pointId: number, dto: CreateDeliveryRequestDto): Promise<DeliveryRequestResponseDto> {
     await Promise.all([this.validatePointExists(pointId), this.validateProductExists(dto.productId)]);

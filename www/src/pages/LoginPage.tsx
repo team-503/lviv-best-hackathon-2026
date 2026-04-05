@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { useAppDispatch } from '@/store/hooks';
+import { loginUser } from '@/store/slices/authSlice';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Truck } from 'lucide-react';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useAppDispatch();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/';
 
   const [email, setEmail] = useState('');
@@ -22,10 +24,10 @@ export function LoginPage() {
     setError('');
     setLoading(true);
 
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const result = await dispatch(loginUser({ email, password }));
 
-    if (authError) {
-      setError(authError.message);
+    if (loginUser.rejected.match(result)) {
+      setError(result.error.message ?? 'Помилка входу');
       setLoading(false);
       return;
     }
@@ -51,7 +53,7 @@ export function LoginPage() {
             <CardDescription className="text-xs">Введіть дані для входу</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
-            <CardContent className="flex flex-col gap-4">
+            <CardContent className="flex flex-col gap-4 pb-6">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input
