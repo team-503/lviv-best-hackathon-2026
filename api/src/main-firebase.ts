@@ -16,8 +16,8 @@ let isInitialized = false;
 
 export const api = functions.https.onRequest(
   {
-    cors: true,
-    maxInstances: 10,
+    cors: false,
+    maxInstances: 3,
     timeoutSeconds: 30,
     region: 'europe-west1',
     memory: '256MiB',

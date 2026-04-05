@@ -12,7 +12,14 @@ import { PrismaExceptionFilter } from './prisma/exception-filters/prisma-excepti
 export function setupApp(app: NestExpressApplication): NestExpressApplication {
   app.use(helmet());
   app.enableCors({
-    origin: process.env.CORS_ORIGIN,
+    origin: (origin, callback) => {
+      const allowed = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()) ?? [];
+      if (!origin || allowed.includes(origin) || origin.match(/^http:\/\/localhost:\d+$/)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: config.get('cors.methods'),
     credentials: true,
   });
