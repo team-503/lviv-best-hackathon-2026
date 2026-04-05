@@ -3,10 +3,9 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import config from 'config';
 import cookieParser from 'cookie-parser';
-// import { doubleCsrf } from 'csrf-csrf';
 import helmet from 'helmet';
-// import { getSessionIdentifier } from './common/helpers/session-identifier';
 import { sessionIdCookieMiddleware } from './common/middlewares/session-id-cookie.middleware';
+import { csrfUtilities } from './csrf/csrf.constants';
 import { PrismaExceptionFilter } from './prisma/exception-filters/prisma-exception.filter';
 
 export function setupApp(app: NestExpressApplication): NestExpressApplication {
@@ -25,22 +24,9 @@ export function setupApp(app: NestExpressApplication): NestExpressApplication {
   });
   app.use(cookieParser());
   app.use(sessionIdCookieMiddleware);
-  // if (process.env.NODE_ENV !== 'development') {
-  //   app.use(
-  //     doubleCsrf({
-  //       getSecret: () => process.env.CSRF_SECRET as string,
-  //       getSessionIdentifier,
-  //       getCsrfTokenFromRequest: (req) => req.headers['x-csrf-token'] as string,
-  //       cookieName: '__csrf',
-  //       cookieOptions: {
-  //         httpOnly: true,
-  //         sameSite: 'strict',
-  //         secure: true,
-  //       },
-  //     }).doubleCsrfProtection,
-  //   );
-  // }
-
+  if (process.env.NODE_ENV !== 'development') {
+    app.use(csrfUtilities.doubleCsrfProtection);
+  }
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

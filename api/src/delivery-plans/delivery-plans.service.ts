@@ -7,7 +7,13 @@ import { RequestStatus } from '../common/enums/request-status.enum';
 import { StopAction } from '../common/enums/stop-action.enum';
 import { GeoService } from '../geo/geo.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CRITICALITY_WEIGHT, STANDARD_CRITICALITIES, URGENT_CRITICALITIES, VEHICLE_CAPACITY, VEHICLE_COUNT } from './constants';
+import {
+  CRITICALITY_WEIGHT,
+  STANDARD_CRITICALITIES,
+  URGENT_CRITICALITIES,
+  VEHICLE_CAPACITY,
+  VEHICLE_COUNT,
+} from './delivery-plans.constants';
 import {
   assignRequestsToVehicles,
   checkDeficits,

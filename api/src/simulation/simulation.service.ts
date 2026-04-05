@@ -5,7 +5,7 @@ import { PlanType } from '../common/enums/plan-type.enum';
 import { RequestStatus } from '../common/enums/request-status.enum';
 import { SimulationStatus } from '../common/enums/simulation-status.enum';
 import { StopAction } from '../common/enums/stop-action.enum';
-import { STANDARD_CRITICALITIES, URGENT_CRITICALITIES } from '../delivery-plans/constants';
+import { STANDARD_CRITICALITIES, URGENT_CRITICALITIES } from '../delivery-plans/delivery-plans.constants';
 import { toPlanWithRoutes } from '../delivery-plans/delivery-plans.helper';
 import { DeliveryPlansService } from '../delivery-plans/delivery-plans.service';
 import type { PlanWithRoutesResponseDto } from '../delivery-plans/dto/response/plan-with-routes.response.dto';
