@@ -4,8 +4,42 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logoutUser } from '@/store/slices/authSlice';
 import { setMobileSidebarOpen, toggleTheme } from '@/store/slices/uiSlice';
 import { USER_ROLE_LABELS } from '@/types/user-role';
-import { LogOut, Menu, Moon, Package, Sun, Truck, User, Users } from 'lucide-react';
+import { Loader2, LogOut, Menu, Moon, Package, Sun, Truck, User, Users, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+function StatusPill({ icon: Icon, label, color }: { icon: React.ElementType; label: string; color: 'amber' | 'blue' }) {
+  const colors = {
+    amber: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+    blue: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+  };
+  return (
+    <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 ${colors[color]}`}>
+      <Icon className="size-3.5" />
+      <span className="text-xs font-medium">{label}</span>
+    </div>
+  );
+}
+
+function ConnectionIndicator() {
+  const { isOnline, queueLength, isSyncing } = useAppSelector((s) => s.connection);
+
+  if (isOnline && queueLength === 0 && !isSyncing) return null;
+
+  if (!isOnline) {
+    return <StatusPill icon={WifiOff} label={`Офлайн${queueLength > 0 ? ` · ${queueLength}` : ''}`} color="amber" />;
+  }
+
+  if (isSyncing) {
+    const SpinningLoader = () => <Loader2 className="size-3.5 animate-spin" />;
+    return <StatusPill icon={SpinningLoader} label="Синхронізація..." color="blue" />;
+  }
+
+  if (queueLength > 0) {
+    return <StatusPill icon={Loader2} label={`${queueLength} в черзі`} color="amber" />;
+  }
+
+  return null;
+}
 
 interface HeaderProps {
   showSimulation?: boolean;
@@ -38,6 +72,9 @@ export function Header({ showSimulation = false }: HeaderProps) {
           </div>
         </div>
       </div>
+
+      {/* Connection Status */}
+      <ConnectionIndicator />
 
       {/* Right */}
       <div className="flex items-center gap-2">

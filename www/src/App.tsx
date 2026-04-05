@@ -13,10 +13,12 @@ import { fetchProfile } from '@/store/slices/authSlice';
 import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
 import { fetchProducts } from '@/store/slices/productsSlice';
 import { fetchRequests } from '@/store/slices/requestsSlice';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 export default function App() {
+  useOnlineStatus();
   const dispatch = useAppDispatch();
   const theme = useAppSelector((s) => s.ui.theme);
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
