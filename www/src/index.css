@@ -1,8 +1,8 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
-@import "leaflet/dist/leaflet.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/geist';
+@import 'leaflet/dist/leaflet.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -166,6 +166,10 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  button,
+  [role='button'] {
+    cursor: pointer;
   }
   body {
     @apply bg-background text-foreground;

@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Users, Warehouse, MapPin, ShieldCheck, User, ChevronRight, Loader2 } from 'lucide-react';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAppSelector } from '@/store/hooks';
@@ -286,19 +285,17 @@ export function PermissionsPage() {
             )}
 
             {users.length > 0 && (
-              <ScrollArea className="max-h-[420px]">
-                <div className="p-2 flex flex-col gap-1">
-                  {users.map((profile) => (
-                    <UserCard
-                      key={profile.id}
-                      profile={profile}
-                      selected={selectedUserId === profile.id}
-                      permCount={permCountByUser.get(profile.id) ?? 0}
-                      onClick={() => setSelectedUserId(profile.id)}
-                    />
-                  ))}
-                </div>
-              </ScrollArea>
+              <div className="max-h-[calc(100vh-220px)] overflow-y-auto p-2 flex flex-col gap-1">
+                {users.map((profile) => (
+                  <UserCard
+                    key={profile.id}
+                    profile={profile}
+                    selected={selectedUserId === profile.id}
+                    permCount={permCountByUser.get(profile.id) ?? 0}
+                    onClick={() => setSelectedUserId(profile.id)}
+                  />
+                ))}
+              </div>
             )}
           </div>
 

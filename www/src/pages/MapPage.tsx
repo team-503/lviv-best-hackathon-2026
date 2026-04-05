@@ -93,7 +93,7 @@ export function MapPage() {
           {isAdmin && (
             <Button
               size="icon"
-              className="absolute bottom-6 right-6 z-10 size-12 rounded-full shadow-lg"
+              className="absolute bottom-6 right-6 z-10 size-12 rounded-full shadow-xl ring-1 ring-black/10"
               onClick={() => setAdminOpen(true)}
               title="Додати об'єкт"
             >
