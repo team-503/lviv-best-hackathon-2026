@@ -163,3 +163,28 @@ export const api = {
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
+
+type MutatingMethod = 'post' | 'put' | 'patch' | 'delete';
+
+export async function offlineAwareMutation<T>(method: MutatingMethod, path: string, body?: unknown): Promise<T | null> {
+  const { enqueue, QUEUE_CHANGE_EVENT } = await import('./offline-queue');
+
+  function addToQueue(): null {
+    enqueue(method, path, body);
+    window.dispatchEvent(new Event(QUEUE_CHANGE_EVENT));
+    return null;
+  }
+
+  if (!navigator.onLine) {
+    return addToQueue();
+  }
+
+  try {
+    return await (method === 'delete' ? api.delete<T>(path) : api[method]<T>(path, body));
+  } catch (error) {
+    if (error instanceof TypeError) {
+      return addToQueue();
+    }
+    throw error;
+  }
+}

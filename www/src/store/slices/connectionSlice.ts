@@ -7,7 +7,7 @@ interface ConnectionState {
 }
 
 const initialState: ConnectionState = {
-  isOnline: true,
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   queueLength: 0,
   isSyncing: false,
 };

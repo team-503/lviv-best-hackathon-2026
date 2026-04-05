@@ -127,9 +127,9 @@ function MapController({
   points,
   markerRefs,
 }: {
-  flyToTrigger: { id: number; key: number } | null;
+  flyToTrigger: { id: number; type: 'warehouse' | 'point'; key: number } | null;
   points: MapPoint[];
-  markerRefs: React.RefObject<Record<number, L.Marker>>;
+  markerRefs: React.RefObject<Record<string, L.Marker>>;
 }) {
   const map = useMap();
   const prevKey = useRef<number | null>(null);
@@ -138,14 +138,14 @@ function MapController({
     if (!flyToTrigger || flyToTrigger.key === prevKey.current) return;
     prevKey.current = flyToTrigger.key;
 
-    const point = points.find((p) => p.id === flyToTrigger.id);
+    const point = points.find((p) => p.id === flyToTrigger.id && p.type === flyToTrigger.type);
     if (!point) return;
 
     const targetZoom = Math.max(map.getZoom(), 15);
     map.flyTo([point.lat, point.lng], targetZoom, { duration: 0.6 });
 
     setTimeout(() => {
-      markerRefs.current[flyToTrigger.id]?.openPopup();
+      markerRefs.current[`${flyToTrigger.type}:${flyToTrigger.id}`]?.openPopup();
     }, 750);
   }, [flyToTrigger, map, points, markerRefs]);
 
@@ -174,22 +174,22 @@ function buildApiRouteData(route: PlanRouteResponseDto, color: string) {
 
 // ─── Main component ───
 interface MapViewProps {
-  selectedPointId: number | null;
-  onSelectPoint: (id: number | null) => void;
+  selectedPointKey: string | null;
+  onSelectPoint: (key: string | null) => void;
   planRoutes?: PlanRouteResponseDto[];
-  hoveredPointId?: number | null;
-  flyToTrigger?: { id: number; key: number } | null;
+  hoveredPoint?: { id: number; type: 'warehouse' | 'point' } | null;
+  flyToTrigger?: { id: number; type: 'warehouse' | 'point'; key: number } | null;
 }
 
 export function MapView({
-  selectedPointId,
+  selectedPointKey,
   onSelectPoint,
   planRoutes = [],
-  hoveredPointId = null,
+  hoveredPoint = null,
   flyToTrigger = null,
 }: MapViewProps) {
   const center: [number, number] = [49.835, 24.02];
-  const markerRefs = useRef<Record<number, L.Marker>>({});
+  const markerRefs = useRef<Record<string, L.Marker>>({});
   const points = useAppSelector((s) => s.mapPoints.points);
 
   const routeVisuals = useMemo(
@@ -209,7 +209,7 @@ export function MapView({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapResizer />
-      <MapController flyToTrigger={flyToTrigger} points={points} markerRefs={markerRefs} />
+      <MapController flyToTrigger={flyToTrigger ?? null} points={points} markerRefs={markerRefs} />
 
       {/* ── Plan / Simulation routes ── */}
       {routeVisuals.map(({ routeId, color, coords, stops }) => (
@@ -228,17 +228,18 @@ export function MapView({
 
       {/* ── Base markers ── */}
       {points.map((point) => {
-        const isHovered = hoveredPointId === point.id;
+        const markerKey = `${point.type}:${point.id}`;
+        const isHovered = hoveredPoint?.id === point.id && hoveredPoint?.type === point.type;
         return (
           <Marker
-            key={point.id}
+            key={markerKey}
             position={[point.lat, point.lng]}
             icon={createPointIcon(point.type, isHovered)}
             ref={(m: L.Marker | null) => {
-              if (m) markerRefs.current[point.id] = m;
-              else delete markerRefs.current[point.id];
+              if (m) markerRefs.current[markerKey] = m;
+              else delete markerRefs.current[markerKey];
             }}
-            eventHandlers={{ click: () => onSelectPoint(selectedPointId === point.id ? null : point.id) }}
+            eventHandlers={{ click: () => onSelectPoint(selectedPointKey === markerKey ? null : markerKey) }}
           >
             <Popup>
               <PointPopup point={point} />

@@ -14,6 +14,7 @@ import { fetchProfile } from '@/store/slices/authSlice';
 import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
 import { fetchProducts } from '@/store/slices/productsSlice';
 import { fetchRequests } from '@/store/slices/requestsSlice';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 

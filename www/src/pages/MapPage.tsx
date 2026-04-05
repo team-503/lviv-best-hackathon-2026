@@ -20,8 +20,8 @@ export function MapPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [adminOpen, setAdminOpen] = useState(false);
-  const [hoveredPointId, setHoveredPointId] = useState<number | null>(null);
-  const [flyToTrigger, setFlyToTrigger] = useState<{ id: number; key: number } | null>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<{ id: number; type: 'warehouse' | 'point' } | null>(null);
+  const [flyToTrigger, setFlyToTrigger] = useState<{ id: number; type: 'warehouse' | 'point'; key: number } | null>(null);
   const { selectedPointId, mobileSidebarOpen } = useAppSelector((s) => s.ui);
   const user = useAppSelector((s) => s.auth.user);
   const loading = useAppSelector((s) => s.mapPoints.loading);
@@ -35,14 +35,14 @@ export function MapPage() {
     dispatch(fetchSimulationStatus());
   }, [dispatch]);
 
-  function handleSelectPoint(id: number) {
-    dispatch(setSelectedPoint(String(id)));
-    setFlyToTrigger({ id, key: Date.now() });
+  function handleSelectPoint(id: number, type: 'warehouse' | 'point') {
+    dispatch(setSelectedPoint(`${type}:${id}`));
+    setFlyToTrigger({ id, type, key: Date.now() });
     dispatch(setMobileSidebarOpen(false));
   }
 
-  function handleHoverPoint(id: number | null) {
-    setHoveredPointId(id);
+  function handleHoverPoint(point: { id: number; type: 'warehouse' | 'point' } | null) {
+    setHoveredPoint(point);
   }
 
   function handleOpenPoint(id: number, type: 'warehouse' | 'point') {
@@ -64,7 +64,6 @@ export function MapPage() {
     mapRoutes = planRoutes;
   }
 
-  const selectedNumericId = selectedPointId != null ? Number(selectedPointId) : null;
 
   return (
     <div className="flex flex-col h-svh bg-background">
@@ -83,10 +82,10 @@ export function MapPage() {
             </div>
           )}
           <MapView
-            selectedPointId={selectedNumericId}
-            onSelectPoint={(id) => dispatch(setSelectedPoint(id != null ? String(id) : null))}
+            selectedPointKey={selectedPointId}
+            onSelectPoint={(key) => dispatch(setSelectedPoint(key))}
             planRoutes={mapRoutes}
-            hoveredPointId={hoveredPointId}
+            hoveredPoint={hoveredPoint}
             flyToTrigger={flyToTrigger}
           />
           <MapLegend showSimLegend={simActive} />

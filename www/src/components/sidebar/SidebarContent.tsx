@@ -75,9 +75,9 @@ function PointsTab({
   onOpenPoint,
   onHoverPoint,
 }: {
-  onSelectPoint: (id: number) => void;
+  onSelectPoint: (id: number, type: 'warehouse' | 'point') => void;
   onOpenPoint: (id: number, type: 'warehouse' | 'point') => void;
-  onHoverPoint?: (id: number | null) => void;
+  onHoverPoint?: (point: { id: number; type: 'warehouse' | 'point' } | null) => void;
 }) {
   const points = useAppSelector((s) => s.mapPoints.points);
   const warehouses = points.filter((p) => p.type === 'warehouse');
@@ -95,11 +95,11 @@ function PointsTab({
         <div className="flex flex-col gap-2">
           {warehouses.map((p) => (
             <PointCard
-              key={p.id}
+              key={`warehouse:${p.id}`}
               point={p}
-              onSelect={() => onSelectPoint(p.id)}
+              onSelect={() => onSelectPoint(p.id, 'warehouse')}
               onOpen={() => onOpenPoint(p.id, 'warehouse')}
-              onHover={() => onHoverPoint?.(p.id)}
+              onHover={() => onHoverPoint?.({ id: p.id, type: 'warehouse' })}
               onHoverEnd={() => onHoverPoint?.(null)}
             />
           ))}
@@ -118,11 +118,11 @@ function PointsTab({
         <div className="flex flex-col gap-2">
           {deliveryPoints.map((p) => (
             <PointCard
-              key={p.id}
+              key={`point:${p.id}`}
               point={p}
-              onSelect={() => onSelectPoint(p.id)}
+              onSelect={() => onSelectPoint(p.id, 'point')}
               onOpen={() => onOpenPoint(p.id, 'point')}
-              onHover={() => onHoverPoint?.(p.id)}
+              onHover={() => onHoverPoint?.({ id: p.id, type: 'point' })}
               onHoverEnd={() => onHoverPoint?.(null)}
             />
           ))}
@@ -333,9 +333,9 @@ function PlanTab() {
 
 // ─── Main Sidebar Content ───
 interface SidebarContentProps {
-  onSelectPoint: (id: number) => void;
+  onSelectPoint: (id: number, type: 'warehouse' | 'point') => void;
   onOpenPoint: (id: number, type: 'warehouse' | 'point') => void;
-  onHoverPoint?: (id: number | null) => void;
+  onHoverPoint?: (point: { id: number; type: 'warehouse' | 'point' } | null) => void;
 }
 
 export function SidebarContent({ onSelectPoint, onOpenPoint, onHoverPoint }: SidebarContentProps) {
