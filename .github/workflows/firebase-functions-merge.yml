@@ -39,7 +39,7 @@ jobs:
         working-directory: api
         run: |
           cat <<EOF > .env
-          NODE_ENV=${{ secrets.NODE_ENV }}
+          NODE_ENV="production"
           CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
           CSRF_SECRET=${{ secrets.CSRF_SECRET }}
           DATABASE_DIRECT_URL=${{ secrets.DATABASE_DIRECT_URL }}
