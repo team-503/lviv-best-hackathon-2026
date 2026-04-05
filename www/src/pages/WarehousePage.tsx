@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
 import {
   AlertDialog,
@@ -15,12 +17,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { deleteWarehouse, getWarehouse, updateWarehouseStock } from '@/lib/api/warehouses';
+import { NotFoundPage } from '@/pages/NotFoundPage';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
 import type { ProductResponseDto, WarehouseDetailResponseDto } from '@/types/api';
 import { Loader2, Package, Pencil, Plus, Save, Trash2, Warehouse, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 
 // ─── Stock Row ───
 function WarehouseStockRow({
@@ -189,6 +190,7 @@ export function WarehousePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -280,14 +282,7 @@ export function WarehousePage() {
   }
 
   if (error || !warehouse) {
-    return (
-      <PageLayout title="Не знайдено">
-        <p className="text-muted-foreground">{error ?? 'Склад не знайдено.'}</p>
-        <Button className="mt-4" onClick={() => navigate('/')}>
-          На головну
-        </Button>
-      </PageLayout>
-    );
+    return <NotFoundPage />;
   }
 
   const totalProducts = warehouse.stock.length;

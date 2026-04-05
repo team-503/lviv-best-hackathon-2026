@@ -67,6 +67,16 @@ export class PointsController {
     return this.pointsService.update(id, dto);
   }
 
+  @Delete(':id/stock/:productId')
+  @Auth(PermissionLevel.Write, ResourceType.Point)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a product from point stock (write)' })
+  @ApiNoContentResponse({ description: 'Product removed from point stock' })
+  @ApiNotFoundResponse({ description: 'Stock item not found' })
+  removeStockItem(@Param('id', ParseIntPipe) id: number, @Param('productId', ParseIntPipe) productId: number): Promise<void> {
+    return this.pointsService.removeStockItem(id, productId);
+  }
+
   @Delete(':id')
   @Auth(AuthLevel.Admin)
   @HttpCode(HttpStatus.NO_CONTENT)
