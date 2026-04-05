@@ -6,6 +6,7 @@ import config from 'config';
 import type { Request } from 'express';
 import { AuthModule } from './auth/auth.module';
 import { getSessionIdentifier } from './common/helpers/session-identifier';
+import { CsrfModule } from './csrf/csrf.module';
 import { DeliveryPlansModule } from './delivery-plans/delivery-plans.module';
 import { DeliveryRequestsModule } from './delivery-requests/delivery-requests.module';
 import { GeoModule } from './geo/geo.module';
@@ -38,6 +39,7 @@ import { WarehousesModule } from './warehouses/warehouses.module';
         },
       ],
     }),
+    CsrfModule,
     HealthcheckModule,
     PrismaModule,
     AuthModule,

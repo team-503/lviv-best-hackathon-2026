@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ResourceType } from '../common/enums/resource-type.enum';
 import { PrismaService } from '../prisma/prisma.service';
-import { DEFAULT_LIMIT } from './constants';
+import { DEFAULT_LIMIT } from './geo.constants';
 import type { NearestLocationResponseDto } from './dto/response/nearest-location.response.dto';
 import type { NearestPointResponseDto } from './dto/response/nearest-point.response.dto';
 import type { NearestWarehouseResponseDto } from './dto/response/nearest-warehouse.response.dto';

@@ -7,7 +7,7 @@ export function sessionIdCookieMiddleware(req: Request, res: Response, next: Nex
     const sid = randomUUID();
     res.cookie('sid', sid, {
       httpOnly: true,
-      sameSite: 'strict',
+      sameSite: 'none',
       secure: true,
       maxAge: ms('1 year'),
     });

@@ -1,6 +1,6 @@
 import { LocationType } from '../common/enums/location-type.enum';
 import { StopAction } from '../common/enums/stop-action.enum';
-import { EARTH_RADIUS_M } from './constants';
+import { EARTH_RADIUS_M } from './delivery-plans.constants';
 import type { PlanWithRoutesResponseDto } from './dto/response/plan-with-routes.response.dto';
 import type { RouteStopResponseDto } from './dto/response/route-stop.response.dto';
 import type { RouteResponseDto } from './dto/response/route.response.dto';
