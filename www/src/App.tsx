@@ -1,5 +1,6 @@
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { LoginPage } from '@/pages/LoginPage';
 import { MapPage } from '@/pages/MapPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';

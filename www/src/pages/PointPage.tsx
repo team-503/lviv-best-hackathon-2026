@@ -1,26 +1,39 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { NearestLocations } from '@/components/point/NearestLocations';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CriticalityBadge } from '@/components/ui/criticality-badge';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
-import { getPoint, updatePointStock } from '@/lib/api/points';
-import { createDeliveryRequest, updateDeliveryRequest, deleteDeliveryRequest } from '@/lib/api/delivery-requests';
+import { Separator } from '@/components/ui/separator';
+import type { CriticalityLevel } from '@/data/criticality';
+import { createDeliveryRequest, deleteDeliveryRequest, updateDeliveryRequest } from '@/lib/api/delivery-requests';
+import { deletePoint, getPoint, updatePointStock } from '@/lib/api/points';
+import { NotFoundPage } from '@/pages/NotFoundPage';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchMapPoints } from '@/store/slices/mapPointsSlice';
+import { fetchRequests } from '@/store/slices/requestsSlice';
 import type {
+  DeliveryRequestResponseDto,
   PointDetailResponseDto,
   PointStockItemResponseDto,
-  DeliveryRequestResponseDto,
   ProductResponseDto,
 } from '@/types/api';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchRequests } from '@/store/slices/requestsSlice';
-import type { CriticalityLevel } from '@/data/criticality';
-import { NearestLocations } from '@/components/point/NearestLocations';
-import { Package, MapPin, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, Clock, Save, X, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Loader2, MapPin, Package, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; classes: string }> = {
   active: { label: 'Активний', icon: Clock, classes: 'text-muted-foreground' },
@@ -82,67 +95,65 @@ function RequestDialog({
   }
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm">{request ? 'Редагувати запит' : 'Новий запит на доставку'}</CardTitle>
-          <Button size="icon" variant="ghost" className="size-7" onClick={onClose}>
-            <X className="size-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Товар</label>
-          <NativeSelect className="w-full" value={productId} onChange={(e) => setProductId(Number(e.target.value))}>
-            {products.map((p) => (
-              <NativeSelectOption key={p.id} value={p.id}>
-                {p.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle>{request ? 'Редагувати запит' : 'Новий запит на доставку'}</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-4 py-2">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Товар</label>
+            <NativeSelect className="w-full" value={productId} onChange={(e) => setProductId(Number(e.target.value))}>
+              {products.map((p) => (
+                <NativeSelectOption key={p.id} value={p.id}>
+                  {p.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Кількість</label>
+            <Input
+              type="number"
+              min={1}
+              placeholder="Введіть кількість"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleSubmit();
+              }}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Критичність</label>
+            <NativeSelect
+              className="w-full"
+              value={criticality}
+              onChange={(e) => setCriticality(e.target.value as CriticalityLevel)}
+            >
+              {CRITICALITY_OPTIONS.map((opt) => (
+                <NativeSelectOption key={opt.value} value={opt.value}>
+                  {opt.label}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Кількість</label>
-          <Input
-            type="number"
-            min={1}
-            placeholder="Введіть кількість"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void handleSubmit();
-            }}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Критичність</label>
-          <NativeSelect
-            className="w-full"
-            value={criticality}
-            onChange={(e) => setCriticality(e.target.value as CriticalityLevel)}
-          >
-            {CRITICALITY_OPTIONS.map((opt) => (
-              <NativeSelectOption key={opt.value} value={opt.value}>
-                {opt.label}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </div>
-
-        <div className="flex items-center justify-end gap-2 pt-1">
-          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
             Скасувати
           </Button>
-          <Button size="sm" onClick={() => void handleSubmit()} disabled={saving}>
+          <Button onClick={() => void handleSubmit()} disabled={saving}>
             {saving && <Loader2 className="size-4 animate-spin mr-1" />}
             Зберегти
           </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -246,6 +257,9 @@ export function PointPage() {
   const [point, setPoint] = useState<PointDetailResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const user = useAppSelector((s) => s.auth.user);
 
   const [dialogState, setDialogState] = useState<
     { mode: 'create' } | { mode: 'edit'; request: DeliveryRequestResponseDto } | null
@@ -290,6 +304,18 @@ export function PointPage() {
     dispatch(fetchRequests());
   }
 
+  async function handleDeletePoint() {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await deletePoint(Number(id));
+      await dispatch(fetchMapPoints());
+      navigate('/');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleDelete(requestId: number) {
     if (!point) return;
     try {
@@ -312,14 +338,7 @@ export function PointPage() {
   }
 
   if (error || !point) {
-    return (
-      <PageLayout title="Помилка">
-        <p className="text-muted-foreground">{error ?? 'Точку доставки не знайдено.'}</p>
-        <Button className="mt-4" onClick={() => navigate('/')}>
-          На головну
-        </Button>
-      </PageLayout>
-    );
+    return <NotFoundPage />;
   }
 
   const requests = point.deliveryRequests;
@@ -339,9 +358,20 @@ export function PointPage() {
             {belowThresholdCount} нижче порогу
           </Badge>
         )}
+        {user?.role === 'admin' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-auto size-8 text-destructive hover:text-destructive"
+            onClick={() => setDeleteDialogOpen(true)}
+            title="Видалити точку"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* ─── Stock ─── */}
         <Card>
           <CardHeader className="pb-3">
@@ -390,18 +420,18 @@ export function PointPage() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            {dialogState !== null && (
-              <RequestDialog
-                pointId={point.id}
-                products={products}
-                request={dialogState.mode === 'edit' ? dialogState.request : undefined}
-                onSaved={handleSaved}
-                onClose={() => setDialogState(null)}
-              />
-            )}
+          {dialogState !== null && (
+            <RequestDialog
+              pointId={point.id}
+              products={products}
+              request={dialogState.mode === 'edit' ? dialogState.request : undefined}
+              onSaved={handleSaved}
+              onClose={() => setDialogState(null)}
+            />
+          )}
 
-            {requests.length === 0 && dialogState === null ? (
+          <CardContent>
+            {requests.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Package className="size-8 text-muted-foreground/40 mb-2" />
                 <p className="text-sm text-muted-foreground">Запитів немає</p>
@@ -474,6 +504,28 @@ export function PointPage() {
           <NearestLocations pointId={point.id} />
         </div>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Видалити точку доставки?</AlertDialogTitle>
+            <AlertDialogDescription>Точку буде архівовано. Цю дію не можна скасувати.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Скасувати</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDeletePoint();
+              }}
+            >
+              {deleting && <Loader2 className="size-4 animate-spin mr-1" />}
+              Видалити
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }

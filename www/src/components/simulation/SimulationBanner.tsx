@@ -21,7 +21,7 @@ const STATUS_CONFIG: Record<
     description: 'Приймаються нові запити на доставку',
     icon: Truck,
     classes: 'bg-primary/10 border-primary/20 text-primary',
-    btnLabel: 'Запустити симуляцію',
+    btnLabel: 'Запустити ітерацію',
     btnIcon: Play,
     btnClasses: '',
   },
@@ -39,7 +39,7 @@ const STATUS_CONFIG: Record<
     description: 'Виконується основний план доставки',
     icon: Truck,
     classes: 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400',
-    btnLabel: 'Завершити симуляцію',
+    btnLabel: 'Завершити ітерацію',
     btnIcon: CheckCheck,
     btnClasses: 'bg-emerald-600 hover:bg-emerald-700 text-white border-0',
   },
@@ -62,7 +62,7 @@ export function SimulationBanner() {
 
       {/* Stats */}
       <div className="hidden md:flex items-center gap-4 text-xs opacity-70 shrink-0">
-        <span>День {day}</span>
+        <span>Ітерація {day}</span>
         {(status === 'stage1' || status === 'stage2') && activeRoutes.length > 0 && (
           <span>{activeRoutes.length} маршрут(ів) на карті</span>
         )}

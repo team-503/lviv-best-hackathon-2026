@@ -101,16 +101,30 @@ export class WarehousesService {
   }
 
   async updateStock(warehouseId: number, items: StockItemDto[]): Promise<StockUpdatedResponseDto> {
-    if (items.length > 0) {
-      const values = Prisma.join(items.map((i) => Prisma.sql`(${warehouseId}, ${i.productId}, ${i.quantity})`));
+    await this.prisma.$transaction(async (tx) => {
+      if (items.length > 0) {
+        const values = Prisma.join(items.map((i) => Prisma.sql`(${warehouseId}, ${i.productId}, ${i.quantity})`));
 
-      await this.prisma.$executeRaw`
-        INSERT INTO warehouse_stock (warehouse_id, product_id, quantity)
-        VALUES ${values}
-        ON CONFLICT (warehouse_id, product_id)
-        DO UPDATE SET quantity = EXCLUDED.quantity
-      `;
-    }
+        await tx.$executeRaw`
+          INSERT INTO warehouse_stock (warehouse_id, product_id, quantity)
+          VALUES ${values}
+          ON CONFLICT (warehouse_id, product_id)
+          DO UPDATE SET quantity = EXCLUDED.quantity
+        `;
+
+        const productIds = Prisma.join(items.map((i) => i.productId));
+        await tx.$executeRaw`
+          DELETE FROM warehouse_stock
+          WHERE warehouse_id = ${warehouseId}
+            AND product_id NOT IN (${productIds})
+        `;
+      } else {
+        await tx.$executeRaw`
+          DELETE FROM warehouse_stock
+          WHERE warehouse_id = ${warehouseId}
+        `;
+      }
+    });
 
     return { updated: items.length };
   }
