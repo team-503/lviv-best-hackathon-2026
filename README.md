@@ -322,63 +322,107 @@ npx prisma studio     # GUI для перегляду даних
 
 PostgreSQL 17 + PostGIS. Міграції керуються через Supabase, Prisma використовується як query client.
 
-```
-┌──────────────┐     ┌──────────────────┐     ┌──────────────┐
-│   profiles   │     │  user_permissions │     │   products   │
-│──────────────│     │──────────────────│     │──────────────│
-│ id (FK auth) │◀───│ user_id          │     │ id           │
-│ email        │     │ resource_type    │     │ name         │
-│ display_name │     │ resource_id      │     └──────┬───────┘
-│ role         │     │ permissions[]    │            │
-└──────────────┘     └──────────────────┘            │
-                                                     │
-┌──────────────┐     ┌──────────────────┐            │
-│  warehouses  │────▶│ warehouse_stock  │────────────┘
-│──────────────│     │──────────────────│            │
-│ id           │     │ warehouse_id     │            │
-│ name         │     │ product_id  ─────┼────────────┘
-│ location     │     │ quantity         │            │
-│ (PostGIS)    │     └──────────────────┘            │
-└──────┬───────┘                                     │
-       │             ┌──────────────────┐            │
-       │             │   point_stock    │────────────┘
-       │      ┌─────▶│──────────────────│            │
-       │      │      │ point_id         │            │
-       │      │      │ product_id  ─────┼────────────┘
-       │      │      │ quantity         │
-       │      │      │ min_threshold    │
-       │      │      └──────────────────┘
-       │      │
-       │  ┌───┴────────┐   ┌────────────────────┐
-       │  │   points    │──▶│ delivery_requests  │──────────┐
-       │  │────────────│   │────────────────────│          │
-       │  │ id         │   │ id                 │          │
-       │  │ name       │   │ point_id           │          │
-       │  │ location   │   │ product_id  ───────┼──────────┤
-       │  │ (PostGIS)  │   │ quantity           │          │
-       │  └────────────┘   │ criticality        │          │
-       │                   │ status             │          │
-       │                   └────────────────────┘          │
-       │                                                    │
-┌──────┴───────────┐   ┌──────────────┐   ┌──────────────┐ │
-│ delivery_plans   │──▶│ plan_routes  │──▶│ route_stops  │ │
-│──────────────────│   │──────────────│   │──────────────│ │
-│ id               │   │ id           │   │ id           │ │
-│ type (urgent/    │   │ plan_id      │   │ route_id     │ │
-│       standard)  │   │ vehicle_no   │   │ stop_order   │ │
-│ status           │   └──────────────┘   │ location_type│ │
-│ created_at       │                      │ warehouse_id─┼─┤
-└──────────────────┘                      │ point_id     │ │
-                                          │ product_id ──┼─┘
-                                          │ quantity     │
-                                          │ action       │
-                                          └──────────────┘
+```mermaid
+erDiagram
+    profiles {
+        uuid id PK "FK auth.users"
+        text email
+        text display_name
+        text role "user | admin"
+        timestamptz created_at
+    }
+
+    products {
+        serial id PK
+        text name UK
+    }
+
+    warehouses {
+        serial id PK
+        text name
+        geography location "PostGIS Point"
+    }
+
+    warehouse_stock {
+        int warehouse_id PK,FK
+        int product_id PK,FK
+        int quantity
+    }
+
+    points {
+        serial id PK
+        text name
+        geography location "PostGIS Point"
+    }
+
+    point_stock {
+        int point_id PK,FK
+        int product_id PK,FK
+        int quantity
+        int min_threshold
+    }
+
+    delivery_requests {
+        serial id PK
+        int point_id FK
+        int product_id FK
+        int quantity
+        criticality_level criticality
+        request_status status
+        timestamptz created_at
+    }
+
+    delivery_plans {
+        serial id PK
+        plan_type type "urgent | standard"
+        plan_status status "draft | executing | completed"
+        timestamptz created_at
+    }
+
+    plan_routes {
+        serial id PK
+        int plan_id FK
+        int vehicle_number
+    }
+
+    route_stops {
+        serial id PK
+        int route_id FK
+        int stop_order
+        location_type location_type "warehouse | point"
+        int warehouse_id FK "nullable"
+        int point_id FK "nullable"
+        int product_id FK
+        int quantity
+        stop_action action "pickup | deliver"
+    }
+
+    user_permissions {
+        serial id PK
+        uuid user_id FK
+        resource_type resource_type "point | warehouse"
+        int resource_id
+        text_array permissions "read, write"
+    }
+
+    profiles ||--o{ user_permissions : "has"
+    warehouses ||--o{ warehouse_stock : "stores"
+    products ||--o{ warehouse_stock : "stocked in"
+    points ||--o{ point_stock : "stores"
+    products ||--o{ point_stock : "stocked in"
+    points ||--o{ delivery_requests : "requests"
+    products ||--o{ delivery_requests : "requested"
+    delivery_plans ||--o{ plan_routes : "contains"
+    plan_routes ||--o{ route_stops : "has"
+    warehouses ||--o{ route_stops : "pickup from"
+    points ||--o{ route_stops : "deliver to"
+    products ||--o{ route_stops : "carries"
 ```
 
 ### Enum типи
 
 ```sql
-CREATE TYPE criticality_level AS ENUM ('normal', 'medium', 'high', 'critical', 'urgent');
+CREATE TYPE criticality_level  AS ENUM ('normal', 'medium', 'high', 'critical', 'urgent');
 CREATE TYPE request_status     AS ENUM ('active', 'completed', 'cancelled');
 CREATE TYPE plan_type          AS ENUM ('urgent', 'standard');
 CREATE TYPE plan_status        AS ENUM ('draft', 'executing', 'completed');
