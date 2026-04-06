@@ -4,7 +4,6 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { fetchProducts } from '@/store/slices/productsSlice';
 import { createProduct, deleteProduct } from '@/lib/api/products';
@@ -114,7 +113,7 @@ export function ProductsPage() {
               <p className="text-sm">Продуктів не знайдено</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[calc(100vh-380px)] overflow-hidden">
+            <div className="max-h-[calc(100vh-380px)] overflow-y-auto">
               <div className="divide-y">
                 {products.map((product) => (
                   <div key={product.id} className="flex items-center gap-3 px-4 py-3">
@@ -135,7 +134,7 @@ export function ProductsPage() {
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           )}
         </div>
       </div>
