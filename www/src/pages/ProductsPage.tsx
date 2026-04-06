@@ -114,7 +114,7 @@ export function ProductsPage() {
               <p className="text-sm">Продуктів не знайдено</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[calc(100vh-380px)]">
+            <ScrollArea className="max-h-[calc(100vh-380px)] overflow-hidden">
               <div className="divide-y">
                 {products.map((product) => (
                   <div key={product.id} className="flex items-center gap-3 px-4 py-3">
